@@ -14,6 +14,7 @@ from lalo.fixtures import iron_man_plan, spider_man_plan
 from lalo.glb import write_canonical_glb
 from lalo.m0 import M0Artifacts, generate_m0_artifacts
 from lalo.m1 import M1Artifacts, generate_m1_artifacts
+from lalo.m2 import GENERATOR_VERSION, M2Artifacts, generate_m2_artifacts
 from lalo.meshing import Mesh, mesh_occupancy
 from lalo.openai_planner import (
     OpenAIHTTPTransport,
@@ -71,7 +72,9 @@ __all__ = [
     "MeshValidation",
     "M0Artifacts",
     "M1Artifacts",
+    "M2Artifacts",
     "ImageInput",
+    "GENERATOR_VERSION",
     "InvalidPlannerOutput",
     "OccupancyGrid",
     "OpenAIHTTPTransport",
@@ -104,6 +107,7 @@ __all__ = [
     "clean_relief_for_fdm",
     "generate_m0_artifacts",
     "generate_m1_artifacts",
+    "generate_m2_artifacts",
     "iron_man_plan",
     "mesh_occupancy",
     "mesh_part",
