@@ -12,6 +12,12 @@ from lalo.generate import write_canonical_manifest, write_canonical_stls
 from lalo.glb import write_canonical_glb
 from lalo.m0 import M0Artifacts, generate_m0_artifacts
 from lalo.meshing import Mesh, mesh_occupancy
+from lalo.protection import (
+    ProtectionMask,
+    ProtectionResult,
+    canonical_protection_masks,
+    clip_protected_relief,
+)
 from lalo.relief import (
     DETAIL_CELLS_PER_MASTER,
     DetailedPart,
@@ -34,11 +40,15 @@ __all__ = [
     "PaletteEntry",
     "PartSpec",
     "PartAppearance",
+    "ProtectionMask",
+    "ProtectionResult",
     "SurfaceFace",
     "SurfaceMap",
     "ValidationIssue",
     "binary_stl_bytes",
     "compile_part_relief",
+    "canonical_protection_masks",
+    "clip_protected_relief",
     "generate_m0_artifacts",
     "mesh_occupancy",
     "mesh_part",

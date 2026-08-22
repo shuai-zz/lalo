@@ -48,7 +48,7 @@ def compile_part_relief(
 
     sizes = size_x, size_y, size_z
     for surface in surfaces:
-        expected = _expected_shape(surface.face, sizes)
+        expected = face_detail_shape(part, surface.face)
         actual = len(surface.relief), len(surface.relief[0])
         if actual != expected:
             raise ValueError(
@@ -90,10 +90,12 @@ def mesh_detailed_part(part: DetailedPart) -> Mesh:
     )
 
 
-def _expected_shape(
-    face: SurfaceFace, sizes: tuple[int, int, int]
-) -> tuple[int, int]:
-    size_x, size_y, size_z = sizes
+def face_detail_shape(part: PartSpec, face: SurfaceFace) -> tuple[int, int]:
+    """Return ``(rows, columns)`` required for one fine-grid part face."""
+
+    size_x, size_y, size_z = (
+        value * DETAIL_CELLS_PER_MASTER for value in part.size_xyz
+    )
     if face in (SurfaceFace.FRONT, SurfaceFace.BACK):
         return size_z, size_x
     if face in (SurfaceFace.LEFT, SurfaceFace.RIGHT):
