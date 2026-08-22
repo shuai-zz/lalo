@@ -15,6 +15,13 @@ from lalo.glb import write_canonical_glb
 from lalo.m0 import M0Artifacts, generate_m0_artifacts
 from lalo.m1 import M1Artifacts, generate_m1_artifacts
 from lalo.meshing import Mesh, mesh_occupancy
+from lalo.plan_json import (
+    CharacterPlanCodecError,
+    character_plan_from_dict,
+    character_plan_from_json,
+    character_plan_to_dict,
+    character_plan_to_json,
+)
 from lalo.planner import (
     CharacterPlanner,
     ImageInput,
@@ -43,6 +50,7 @@ from lalo.voxel import OccupancyGrid, solid_cuboid
 __all__ = [
     "CANONICAL_PARTS",
     "CharacterPlan",
+    "CharacterPlanCodecError",
     "CharacterPlanner",
     "DETAIL_CELLS_PER_MASTER",
     "DetailedPart",
@@ -67,6 +75,10 @@ __all__ = [
     "SilhouetteFeature",
     "ValidationIssue",
     "binary_stl_bytes",
+    "character_plan_from_dict",
+    "character_plan_from_json",
+    "character_plan_to_dict",
+    "character_plan_to_json",
     "compile_part_relief",
     "canonical_protection_masks",
     "clip_protected_relief",
