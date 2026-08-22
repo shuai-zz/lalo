@@ -9,6 +9,7 @@ from lalo.appearance import (
 )
 from lalo.body import CANONICAL_PARTS, PartSpec, mesh_part
 from lalo.generate import write_canonical_manifest, write_canonical_stls
+from lalo.fixtures import iron_man_plan, spider_man_plan
 from lalo.glb import write_canonical_glb
 from lalo.m0 import M0Artifacts, generate_m0_artifacts
 from lalo.meshing import Mesh, mesh_occupancy
@@ -53,10 +54,12 @@ __all__ = [
     "clip_protected_relief",
     "clean_relief_for_fdm",
     "generate_m0_artifacts",
+    "iron_man_plan",
     "mesh_occupancy",
     "mesh_part",
     "mesh_detailed_part",
     "solid_cuboid",
+    "spider_man_plan",
     "validate_mesh",
     "write_canonical_manifest",
     "write_canonical_stls",
