@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import unittest
+from collections import Counter
 
-from lalo.body import CANONICAL_PARTS, PartSpec
+from lalo.body import CANONICAL_PARTS, PartSpec, mesh_part
+from lalo.meshing import Mesh
 
 
 class CanonicalBodyTests(unittest.TestCase):
@@ -80,6 +82,25 @@ class CanonicalBodyTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             CANONICAL_PARTS[0].name = "changed"  # type: ignore[misc]
 
+    def test_compiles_head_at_local_origin(self) -> None:
+        mesh = mesh_part(_by_name()["head"])
+
+        self.assertEqual(_bounds(mesh), ((0, 0, 0), (8, 8, 8)))
+        self.assertAlmostEqual(_signed_volume(mesh), 8 * 8 * 8)
+        self.assertEqual(_edge_incidence(mesh), {2})
+
+    def test_compiles_distinct_torso_and_foot_dimensions(self) -> None:
+        parts = _by_name()
+
+        self.assertEqual(_bounds(mesh_part(parts["torso"]))[1], (8, 4, 12))
+        self.assertEqual(_bounds(mesh_part(parts["left_foot"]))[1], (4, 6, 2))
+
+    def test_assembled_origin_does_not_change_local_mesh(self) -> None:
+        first = PartSpec("example", (2, 3, 4), (0, 0, 0))
+        moved = PartSpec("example", (2, 3, 4), (100, -20, 8))
+
+        self.assertEqual(mesh_part(first), mesh_part(moved))
+
 
 def _by_name() -> dict[str, PartSpec]:
     return {part.name: part for part in CANONICAL_PARTS}
@@ -95,6 +116,40 @@ def _left_leg_names() -> tuple[str, ...]:
 
 def _max_x(part: PartSpec) -> int:
     return part.origin_xyz[0] + part.size_xyz[0]
+
+
+def _bounds(mesh: Mesh) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    return (
+        tuple(min(vertex[axis] for vertex in mesh.vertices) for axis in range(3)),
+        tuple(max(vertex[axis] for vertex in mesh.vertices) for axis in range(3)),
+    )
+
+
+def _edge_incidence(mesh: Mesh) -> set[int]:
+    edges: Counter[tuple[int, int]] = Counter()
+    for a, b, c in mesh.faces:
+        edges.update(
+            (
+                tuple(sorted((a, b))),
+                tuple(sorted((b, c))),
+                tuple(sorted((c, a))),
+            )
+        )
+    return set(edges.values())
+
+
+def _signed_volume(mesh: Mesh) -> float:
+    volume_times_six = 0
+    for a_index, b_index, c_index in mesh.faces:
+        ax, ay, az = mesh.vertices[a_index]
+        bx, by, bz = mesh.vertices[b_index]
+        cx, cy, cz = mesh.vertices[c_index]
+        volume_times_six += (
+            ax * (by * cz - bz * cy)
+            + ay * (bz * cx - bx * cz)
+            + az * (bx * cy - by * cx)
+        )
+    return volume_times_six / 6
 
 
 if __name__ == "__main__":
