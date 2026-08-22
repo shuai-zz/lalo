@@ -15,6 +15,14 @@ from lalo.glb import write_canonical_glb
 from lalo.m0 import M0Artifacts, generate_m0_artifacts
 from lalo.m1 import M1Artifacts, generate_m1_artifacts
 from lalo.meshing import Mesh, mesh_occupancy
+from lalo.planner import (
+    CharacterPlanner,
+    ImageInput,
+    PlanRequest,
+    PlannerCapabilities,
+    PlanResult,
+    SUPPORTED_IMAGE_MEDIA_TYPES,
+)
 from lalo.protection import (
     ProtectionMask,
     ProtectionResult,
@@ -35,14 +43,19 @@ from lalo.voxel import OccupancyGrid, solid_cuboid
 __all__ = [
     "CANONICAL_PARTS",
     "CharacterPlan",
+    "CharacterPlanner",
     "DETAIL_CELLS_PER_MASTER",
     "DetailedPart",
     "Mesh",
     "MeshValidation",
     "M0Artifacts",
     "M1Artifacts",
+    "ImageInput",
     "OccupancyGrid",
     "PaletteEntry",
+    "PlanRequest",
+    "PlanResult",
+    "PlannerCapabilities",
     "PartSpec",
     "PartAppearance",
     "ProtectionMask",
@@ -50,6 +63,7 @@ __all__ = [
     "PrintabilityResult",
     "SurfaceFace",
     "SurfaceMap",
+    "SUPPORTED_IMAGE_MEDIA_TYPES",
     "SilhouetteFeature",
     "ValidationIssue",
     "binary_stl_bytes",
