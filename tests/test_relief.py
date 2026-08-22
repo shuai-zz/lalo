@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from lalo.appearance import SurfaceFace, SurfaceMap
+from lalo.appearance import SilhouetteFeature, SurfaceFace, SurfaceMap
 from lalo.body import PartSpec
 from lalo.relief import compile_part_relief, mesh_detailed_part
 from lalo.validation import validate_mesh
@@ -78,6 +78,23 @@ class ReliefCompilerTests(unittest.TestCase):
             compile_part_relief(self.part, surfaces),
             compile_part_relief(self.part, surfaces),
         )
+
+    def test_fuses_compact_silhouette_block_into_one_manifold_solid(self) -> None:
+        feature = SilhouetteFeature((-2, 1, 1), (2, 2, 2), 0)
+        mesh = mesh_detailed_part(compile_part_relief(self.part, (), (feature,)))
+
+        self.assertEqual(_bounds(mesh)[0][0], -2)
+        self.assertEqual(_volume(mesh), 133.0)
+        self.assertTrue(validate_mesh(mesh).valid)
+
+    def test_rejects_floating_or_out_of_envelope_silhouette(self) -> None:
+        floating = SilhouetteFeature((-2, -2, -2), (1, 1, 1), 0)
+        with self.assertRaisesRegex(ValueError, "face-connect"):
+            compile_part_relief(self.part, (), (floating,))
+
+        outside = SilhouetteFeature((-3, 1, 1), (2, 2, 2), 0)
+        with self.assertRaisesRegex(ValueError, "padding envelope"):
+            compile_part_relief(self.part, (), (outside,))
 
 
 def _surface(face: SurfaceFace, center_level: int = 0) -> SurfaceMap:

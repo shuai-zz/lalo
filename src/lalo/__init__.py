@@ -4,6 +4,7 @@ from lalo.appearance import (
     CharacterPlan,
     PaletteEntry,
     PartAppearance,
+    SilhouetteFeature,
     SurfaceFace,
     SurfaceMap,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "PrintabilityResult",
     "SurfaceFace",
     "SurfaceMap",
+    "SilhouetteFeature",
     "ValidationIssue",
     "binary_stl_bytes",
     "compile_part_relief",

@@ -6,6 +6,7 @@ from lalo.appearance import (
     CharacterPlan,
     PaletteEntry,
     PartAppearance,
+    SilhouetteFeature,
     SurfaceFace,
     SurfaceMap,
 )
@@ -68,6 +69,19 @@ class AppearancePlanTests(unittest.TestCase):
             CharacterPlan("1.0", "hero", _palette(1), (part,))
         with self.assertRaisesRegex(ValueError, "schema_version"):
             CharacterPlan("2.0", "hero", _palette(1), ())
+
+    def test_validates_silhouette_features_and_palette_references(self) -> None:
+        feature = SilhouetteFeature((-2, 1, 1), (2, 2, 2), 1)
+        part = PartAppearance("head", (), (feature,))
+        plan = CharacterPlan("1.0", "ears", _palette(2), (part,))
+        self.assertEqual(plan.parts[0].silhouette_features, (feature,))
+
+        with self.assertRaisesRegex(ValueError, "greater than zero"):
+            SilhouetteFeature((0, 0, 0), (0, 1, 1), 0)
+        with self.assertRaisesRegex(ValueError, "10 detail cells"):
+            SilhouetteFeature((0, 0, 0), (11, 1, 1), 0)
+        with self.assertRaisesRegex(ValueError, "missing palette"):
+            CharacterPlan("1.0", "ears", _palette(1), (part,))
 
 
 def _palette(count: int) -> tuple[PaletteEntry, ...]:
