@@ -15,6 +15,12 @@ from lalo.glb import write_canonical_glb
 from lalo.m0 import M0Artifacts, generate_m0_artifacts
 from lalo.m1 import M1Artifacts, generate_m1_artifacts
 from lalo.meshing import Mesh, mesh_occupancy
+from lalo.openai_planner import (
+    OpenAIHTTPTransport,
+    OpenAIPlanner,
+    ResponsesTransport,
+    openai_planner_schema,
+)
 from lalo.plan_json import (
     CharacterPlanCodecError,
     character_plan_from_dict,
@@ -63,6 +69,8 @@ __all__ = [
     "ImageInput",
     "InvalidPlannerOutput",
     "OccupancyGrid",
+    "OpenAIHTTPTransport",
+    "OpenAIPlanner",
     "PaletteEntry",
     "PlanRequest",
     "PlanResult",
@@ -71,6 +79,7 @@ __all__ = [
     "PartAppearance",
     "ProtectionMask",
     "ProtectionResult",
+    "ResponsesTransport",
     "PrintabilityResult",
     "SurfaceFace",
     "SurfaceMap",
@@ -93,6 +102,7 @@ __all__ = [
     "iron_man_plan",
     "mesh_occupancy",
     "mesh_part",
+    "openai_planner_schema",
     "plan_character",
     "mesh_detailed_part",
     "solid_cuboid",
