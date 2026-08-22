@@ -6,13 +6,23 @@ Lalo is an open-source tool that turns a short text prompt and an optional refer
 
 Describe a character such as Spider-Man, Iron Man, or upload a photo of yourself. Lalo extracts the recognizable details—hair, glasses, clothing, colors, masks, and patterns—then builds them as printable voxel geometry and surface relief.
 
+The M0 geometry prototype is complete. It generates an untextured canonical
+figure without joints while the character-planning and relief stages are being
+built.
+
 ```bash
-lalo generate \
-  --prompt "保留黑框眼镜和蓝色夹克" \
-  --image person.jpg \
-  --height 80 \
-  --seed 42 \
-  --output ./result
+python -m pip install -e .
+python -c 'from lalo import generate_m0_artifacts; generate_m0_artifacts("result")'
+```
+
+The command produces:
+
+```text
+result/
+  stl/                    # 14 separate binary STL parts
+  manifest.json           # physical scale and assembly transforms
+  preview.glb             # assembled 3D preview
+  validation_report.json  # per-part topology results
 ```
 
 ## What Lalo will generate
@@ -59,13 +69,13 @@ Non-humanoids, capes, weapons, long hanging hair, user editing, joints, 3MF, Win
 
 ## Project status
 
-Lalo is currently in the specification and geometry-prototyping stage. The implementation roadmap is:
+M0 is complete: Lalo can deterministically generate, validate, and preview a
+canonical 14-part, 80 mm block figure. The remaining roadmap is:
 
-1. Deterministic voxel geometry compiler and STL validation
-2. Surface relief and material-map compiler
-3. Pluggable multimodal character planner
-4. End-to-end CLI and physical print validation
-5. Joint insertion and multicolor 3MF support
+1. Surface relief and material-map compiler
+2. Pluggable multimodal character planner
+3. End-to-end CLI and physical print validation
+4. Joint insertion and multicolor 3MF support
 
 See [SPEC.md](./SPEC.md) for the complete product and technical specification.
 
