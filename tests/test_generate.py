@@ -1,0 +1,90 @@
+from __future__ import annotations
+
+import struct
+import tempfile
+import unittest
+from pathlib import Path
+
+from lalo.body import CANONICAL_PARTS
+from lalo.generate import write_canonical_stls
+
+_TRIANGLE = struct.Struct("<12fH")
+
+
+class CanonicalStlSetTests(unittest.TestCase):
+    def test_writes_all_parts_in_canonical_order(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = write_canonical_stls(Path(directory) / "stl")
+
+            self.assertEqual(
+                tuple(path.name for path in paths),
+                tuple(f"{part.name}.stl" for part in CANONICAL_PARTS),
+            )
+            self.assertTrue(all(path.is_file() for path in paths))
+            self.assertTrue(all(_triangle_count(path) > 0 for path in paths))
+
+    def test_scales_head_to_default_twenty_millimeter_cube(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = write_canonical_stls(directory)
+            head_path = next(path for path in paths if path.name == "head.stl")
+
+            self.assertEqual(_bounds(head_path), ((0.0, 0.0, 0.0), (20.0, 20.0, 20.0)))
+
+    def test_custom_height_scales_coordinates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = write_canonical_stls(directory, height_mm=160)
+            head_path = next(path for path in paths if path.name == "head.stl")
+
+            self.assertEqual(_bounds(head_path)[1], (40.0, 40.0, 40.0))
+
+    def test_output_is_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = write_canonical_stls(root / "first")
+            second = write_canonical_stls(root / "second")
+
+            self.assertEqual(
+                tuple(path.read_bytes() for path in first),
+                tuple(path.read_bytes() for path in second),
+            )
+
+    def test_rejects_non_empty_directory_without_modifying_it(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "keep.txt"
+            marker.write_text("keep", encoding="utf-8")
+
+            with self.assertRaisesRegex(FileExistsError, "must be empty"):
+                write_canonical_stls(directory)
+            self.assertEqual(marker.read_text(encoding="utf-8"), "keep")
+            self.assertEqual(tuple(Path(directory).iterdir()), (marker,))
+
+    def test_rejects_invalid_height(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            for height in (0, -1, float("inf"), float("nan")):
+                with self.subTest(height=height):
+                    with self.assertRaisesRegex(ValueError, "height_mm"):
+                        write_canonical_stls(Path(directory) / "out", height_mm=height)
+
+
+def _triangle_count(path: Path) -> int:
+    return struct.unpack_from("<I", path.read_bytes(), 80)[0]
+
+
+def _bounds(
+    path: Path,
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    data = path.read_bytes()
+    coordinates: list[tuple[float, float, float]] = []
+    for index in range(struct.unpack_from("<I", data, 80)[0]):
+        triangle = _TRIANGLE.unpack_from(data, 84 + index * 50)
+        coordinates.extend(
+            tuple(triangle[start : start + 3]) for start in (3, 6, 9)
+        )
+    return (
+        tuple(min(vertex[axis] for vertex in coordinates) for axis in range(3)),
+        tuple(max(vertex[axis] for vertex in coordinates) for axis in range(3)),
+    )
+
+
+if __name__ == "__main__":
+    unittest.main()
