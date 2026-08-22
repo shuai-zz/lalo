@@ -45,6 +45,11 @@ from lalo.protection import (
     clip_protected_relief,
 )
 from lalo.printability import PrintabilityResult, clean_relief_for_fdm
+from lalo.privacy import (
+    planning_metadata,
+    planning_metadata_json,
+    transient_image_file,
+)
 from lalo.relief import (
     DETAIL_CELLS_PER_MASTER,
     DetailedPart,
@@ -104,9 +109,12 @@ __all__ = [
     "mesh_part",
     "openai_planner_schema",
     "plan_character",
+    "planning_metadata",
+    "planning_metadata_json",
     "mesh_detailed_part",
     "solid_cuboid",
     "spider_man_plan",
+    "transient_image_file",
     "validate_mesh",
     "write_canonical_manifest",
     "write_canonical_stls",
