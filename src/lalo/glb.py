@@ -6,11 +6,13 @@ import json
 import math
 import os
 import struct
+from collections.abc import Mapping
 from pathlib import Path
 
 from lalo.appearance import CharacterPlan, SurfaceFace, SurfaceMap
 from lalo.body import CANONICAL_PARTS, mesh_part
 from lalo.generate import DEFAULT_HEIGHT_MM, MASTER_HEIGHT_VOXELS
+from lalo.meshing import Mesh
 from lalo.relief import DETAIL_CELLS_PER_MASTER, face_detail_shape
 
 _GLB_HEADER = struct.Struct("<4sII")
@@ -22,11 +24,15 @@ def write_canonical_glb(
     *,
     height_mm: float = DEFAULT_HEIGHT_MM,
     plan: CharacterPlan | None = None,
+    part_meshes: Mapping[str, Mesh] | None = None,
+    geometry_scale_mm: float | None = None,
 ) -> Path:
     """Write an assembled GLB 2.0 preview and return its path."""
 
     scale_mm = _scale_for_height(height_mm)
-    document, binary = _build_document(scale_mm, plan)
+    document, binary = _build_document(
+        scale_mm, plan, part_meshes, geometry_scale_mm
+    )
     json_chunk = json.dumps(
         document, ensure_ascii=True, separators=(",", ":"), sort_keys=True
     ).encode("utf-8")
@@ -57,7 +63,10 @@ def write_canonical_glb(
 
 
 def _build_document(
-    scale_mm: float, plan: CharacterPlan | None = None
+    scale_mm: float,
+    plan: CharacterPlan | None = None,
+    part_meshes: Mapping[str, Mesh] | None = None,
+    geometry_scale_mm: float | None = None,
 ) -> tuple[dict[str, object], bytes]:
     binary = bytearray()
     buffer_views: list[dict[str, object]] = []
@@ -71,13 +80,16 @@ def _build_document(
             "children": root_children,
         }
     ]
+    mesh_scale = geometry_scale_mm if geometry_scale_mm is not None else scale_mm
+    if not math.isfinite(mesh_scale) or mesh_scale <= 0:
+        raise ValueError("geometry_scale_mm must be finite and greater than zero")
 
     for part in CANONICAL_PARTS:
-        mesh = mesh_part(part)
+        mesh = part_meshes[part.name] if part_meshes is not None else mesh_part(part)
         position_offset = _append_aligned(
             binary,
             b"".join(
-                struct.pack("<3f", *(coordinate * scale_mm for coordinate in vertex))
+                struct.pack("<3f", *(coordinate * mesh_scale for coordinate in vertex))
                 for vertex in mesh.vertices
             ),
         )
@@ -97,8 +109,14 @@ def _build_document(
                 "componentType": 5126,
                 "count": len(mesh.vertices),
                 "type": "VEC3",
-                "min": [0.0, 0.0, 0.0],
-                "max": [value * scale_mm for value in part.size_xyz],
+                "min": [
+                    min(vertex[axis] for vertex in mesh.vertices) * mesh_scale
+                    for axis in range(3)
+                ],
+                "max": [
+                    max(vertex[axis] for vertex in mesh.vertices) * mesh_scale
+                    for axis in range(3)
+                ],
             }
         )
 
