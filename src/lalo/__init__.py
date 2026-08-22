@@ -25,11 +25,13 @@ from lalo.plan_json import (
 from lalo.planner import (
     CharacterPlanner,
     ImageInput,
+    InvalidPlannerOutput,
     PlanRequest,
     PlannerCapabilities,
     PlanResult,
     SUPPORTED_IMAGE_MEDIA_TYPES,
 )
+from lalo.planning import SingleSubjectError, UnsupportedPlannerError, plan_character
 from lalo.protection import (
     ProtectionMask,
     ProtectionResult,
@@ -59,6 +61,7 @@ __all__ = [
     "M0Artifacts",
     "M1Artifacts",
     "ImageInput",
+    "InvalidPlannerOutput",
     "OccupancyGrid",
     "PaletteEntry",
     "PlanRequest",
@@ -72,6 +75,8 @@ __all__ = [
     "SurfaceFace",
     "SurfaceMap",
     "SUPPORTED_IMAGE_MEDIA_TYPES",
+    "SingleSubjectError",
+    "UnsupportedPlannerError",
     "SilhouetteFeature",
     "ValidationIssue",
     "binary_stl_bytes",
@@ -88,6 +93,7 @@ __all__ = [
     "iron_man_plan",
     "mesh_occupancy",
     "mesh_part",
+    "plan_character",
     "mesh_detailed_part",
     "solid_cuboid",
     "spider_man_plan",

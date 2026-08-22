@@ -13,7 +13,9 @@ from lalo.planner import (
 class FakePlanner:
     capabilities = PlannerCapabilities(True, True, True, True)
 
-    def plan(self, request: PlanRequest) -> PlanResult:
+    def plan(
+        self, request: PlanRequest, *, correction: str | None = None
+    ) -> PlanResult:
         return PlanResult(
             plan=spider_man_plan(),
             effective_seed=request.seed,
