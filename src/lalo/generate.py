@@ -40,24 +40,33 @@ def write_canonical_stls(
 
 
 def write_canonical_manifest(
-    output_directory: str | os.PathLike[str], *, height_mm: float = DEFAULT_HEIGHT_MM
+    stl_directory: str | os.PathLike[str],
+    *,
+    height_mm: float = DEFAULT_HEIGHT_MM,
+    destination: str | os.PathLike[str] | None = None,
 ) -> Path:
     """Write assembly metadata for a complete canonical STL directory."""
 
     height = _validate_height(height_mm)
-    output = Path(output_directory)
+    stl_output = Path(stl_directory)
+    manifest_path = (
+        Path(destination) if destination is not None else stl_output / "manifest.json"
+    )
     scale_mm = height / MASTER_HEIGHT_VOXELS
     part_entries = []
 
     for part in CANONICAL_PARTS:
-        stl_path = output / f"{part.name}.stl"
+        stl_path = stl_output / f"{part.name}.stl"
         if not stl_path.is_file():
             raise FileNotFoundError(f"missing canonical STL: {stl_path}")
         stl_data = stl_path.read_bytes()
+        relative_file = Path(
+            os.path.relpath(stl_path, start=manifest_path.parent)
+        ).as_posix()
         part_entries.append(
             {
                 "name": part.name,
-                "file": stl_path.name,
+                "file": relative_file,
                 "size_mm": [value * scale_mm for value in part.size_xyz],
                 "assembly_translation_mm": [
                     value * scale_mm for value in part.origin_xyz
@@ -80,7 +89,7 @@ def write_canonical_manifest(
         },
         "parts": part_entries,
     }
-    manifest_path = output / "manifest.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
