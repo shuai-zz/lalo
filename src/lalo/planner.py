@@ -70,6 +70,7 @@ class PlanResult:
     provider: str
     model: str
     model_version: str
+    subject_count: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.plan, CharacterPlan):
@@ -82,6 +83,22 @@ class PlanResult:
             value = getattr(self, field_name)
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{field_name} must not be empty")
+        if self.subject_count is not None and (
+            isinstance(self.subject_count, bool)
+            or not isinstance(self.subject_count, int)
+            or self.subject_count < 0
+        ):
+            raise ValueError("subject_count must be a non-negative integer or None")
+
+
+class InvalidPlannerOutput(ValueError):
+    """A provider response failed safe local schema or semantic validation."""
+
+    def __init__(self, feedback: str) -> None:
+        if not isinstance(feedback, str) or not feedback.strip():
+            raise ValueError("invalid-output feedback must not be empty")
+        self.feedback = feedback
+        super().__init__(feedback)
 
 
 @runtime_checkable
@@ -92,5 +109,7 @@ class CharacterPlanner(Protocol):
     def capabilities(self) -> PlannerCapabilities:
         """Return the provider features used by orchestration policy."""
 
-    def plan(self, request: PlanRequest) -> PlanResult:
+    def plan(
+        self, request: PlanRequest, *, correction: str | None = None
+    ) -> PlanResult:
         """Produce a validated character plan for one request."""
