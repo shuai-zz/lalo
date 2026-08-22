@@ -7,6 +7,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from lalo.appearance import (
+    CharacterPlan,
+    PaletteEntry,
+    PartAppearance,
+    SurfaceFace,
+    SurfaceMap,
+)
 from lalo.body import CANONICAL_PARTS
 from lalo.glb import write_canonical_glb
 
@@ -74,6 +81,46 @@ class CanonicalGlbTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "height_mm"):
                 write_canonical_glb(directory, height_mm=0)
 
+    def test_renders_palette_and_groups_surface_patches_by_material(self) -> None:
+        plan = _material_plan()
+        with tempfile.TemporaryDirectory() as directory:
+            document, _ = _parse_glb(
+                write_canonical_glb(directory, plan=plan).read_bytes()
+            )
+
+            self.assertEqual([item["name"] for item in document["materials"]], ["red", "blue", "black", "white"])
+            overlay = next(mesh for mesh in document["meshes"] if mesh["name"] == "head_materials")
+            self.assertEqual(
+                [primitive["material"] for primitive in overlay["primitives"]],
+                [0, 1, 2, 3],
+            )
+            self.assertIn("head_materials", [node["name"] for node in document["nodes"]])
+
+    def test_positions_raised_front_patch_outward(self) -> None:
+        plan = _material_plan()
+        with tempfile.TemporaryDirectory() as directory:
+            document, binary = _parse_glb(
+                write_canonical_glb(directory, plan=plan).read_bytes()
+            )
+            overlay = next(mesh for mesh in document["meshes"] if mesh["name"] == "head_materials")
+            material_one = next(
+                primitive for primitive in overlay["primitives"] if primitive["material"] == 1
+            )
+            accessor = document["accessors"][material_one["attributes"]["POSITION"]]
+            view = document["bufferViews"][accessor["bufferView"]]
+            first_position = struct.unpack_from("<3f", binary, view["byteOffset"])
+
+            self.assertLess(first_position[1], -0.5)
+
+    def test_material_output_is_deterministic(self) -> None:
+        plan = _material_plan()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.assertEqual(
+                write_canonical_glb(root / "first", plan=plan).read_bytes(),
+                write_canonical_glb(root / "second", plan=plan).read_bytes(),
+            )
+
 
 def _parse_glb(data: bytes) -> tuple[dict[str, object], bytes]:
     magic, version, length = struct.unpack_from("<4sII", data)
@@ -90,6 +137,34 @@ def _parse_glb(data: bytes) -> tuple[dict[str, object], bytes]:
         raise AssertionError("missing binary chunk")
     binary_start = json_end + 8
     return document, data[binary_start : binary_start + binary_length]
+
+
+def _material_plan() -> CharacterPlan:
+    size = 40
+    materials = tuple(
+        tuple((row * size + column) % 4 for column in range(size))
+        for row in range(size)
+    )
+    relief = tuple(
+        tuple(1 if materials[row][column] == 1 else 0 for column in range(size))
+        for row in range(size)
+    )
+    return CharacterPlan(
+        "1.0",
+        "four-color head",
+        (
+            PaletteEntry(0, "red", "#FF0000"),
+            PaletteEntry(1, "blue", "#0000FF"),
+            PaletteEntry(2, "black", "#000000"),
+            PaletteEntry(3, "white", "#FFFFFF"),
+        ),
+        (
+            PartAppearance(
+                "head",
+                (SurfaceMap(SurfaceFace.FRONT, relief, materials),),
+            ),
+        ),
+    )
 
 
 if __name__ == "__main__":
