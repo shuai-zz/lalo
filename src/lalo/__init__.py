@@ -1,5 +1,12 @@
 """Lalo geometry tools."""
 
+from lalo.appearance import (
+    CharacterPlan,
+    PaletteEntry,
+    PartAppearance,
+    SurfaceFace,
+    SurfaceMap,
+)
 from lalo.body import CANONICAL_PARTS, PartSpec, mesh_part
 from lalo.generate import write_canonical_manifest, write_canonical_stls
 from lalo.glb import write_canonical_glb
@@ -11,11 +18,16 @@ from lalo.voxel import OccupancyGrid, solid_cuboid
 
 __all__ = [
     "CANONICAL_PARTS",
+    "CharacterPlan",
     "Mesh",
     "MeshValidation",
     "M0Artifacts",
     "OccupancyGrid",
+    "PaletteEntry",
     "PartSpec",
+    "PartAppearance",
+    "SurfaceFace",
+    "SurfaceMap",
     "ValidationIssue",
     "binary_stl_bytes",
     "generate_m0_artifacts",
