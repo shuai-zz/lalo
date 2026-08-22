@@ -6,13 +6,18 @@ Lalo is an open-source tool that turns a short text prompt and an optional refer
 
 Describe a character such as Spider-Man, Iron Man, or upload a photo of yourself. Lalo extracts the recognizable details—hair, glasses, clothing, colors, masks, and patterns—then builds them as printable voxel geometry and surface relief.
 
-The M0 geometry prototype is complete. It generates an untextured canonical
-figure without joints while the character-planning and relief stages are being
-built.
+The M1 geometry pipeline is complete. It generates printable relief geometry
+and a four-color preview from a validated `CharacterPlan`. Spider-Man and Iron
+Man are included as deterministic golden fixtures while the multimodal planner
+is being built.
 
 ```bash
 python -m pip install -e .
-python -c 'from lalo import generate_m0_artifacts; generate_m0_artifacts("result")'
+python - <<'PY'
+from lalo import generate_m1_artifacts, spider_man_plan
+
+generate_m1_artifacts(spider_man_plan(), "result")
+PY
 ```
 
 The command produces:
@@ -20,10 +25,15 @@ The command produces:
 ```text
 result/
   stl/                    # 14 separate binary STL parts
-  manifest.json           # physical scale and assembly transforms
-  preview.glb             # assembled 3D preview
-  validation_report.json  # per-part topology results
+  character_plan.json     # cleaned and protected relief plan
+  material_grid.json.gz   # retained four-color surface assignments
+  manifest.json           # actual bounds, transforms, and file hashes
+  preview.glb             # detailed, assembled, colored preview
+  validation_report.json  # cleanup and topology results
 ```
+
+Use `iron_man_plan()` instead to generate the second golden fixture. The M0
+untextured generator remains available as `generate_m0_artifacts()`.
 
 ## What Lalo will generate
 
@@ -69,13 +79,14 @@ Non-humanoids, capes, weapons, long hanging hair, user editing, joints, 3MF, Win
 
 ## Project status
 
-M0 is complete: Lalo can deterministically generate, validate, and preview a
-canonical 14-part, 80 mm block figure. The remaining roadmap is:
+M0 and M1 are complete. Lalo can deterministically compile raised, engraved,
+and compact silhouette voxel features; enforce basic FDM feature limits;
+protect future joint surfaces; and produce validated STL and colored GLB
+artifacts for two golden characters. The remaining roadmap is:
 
-1. Surface relief and material-map compiler
-2. Pluggable multimodal character planner
-3. End-to-end CLI and physical print validation
-4. Joint insertion and multicolor 3MF support
+1. Pluggable multimodal character planner
+2. End-to-end CLI and physical print validation
+3. Joint insertion and multicolor 3MF support
 
 See [SPEC.md](./SPEC.md) for the complete product and technical specification.
 
