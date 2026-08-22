@@ -18,6 +18,7 @@ from lalo.protection import (
     canonical_protection_masks,
     clip_protected_relief,
 )
+from lalo.printability import PrintabilityResult, clean_relief_for_fdm
 from lalo.relief import (
     DETAIL_CELLS_PER_MASTER,
     DetailedPart,
@@ -42,6 +43,7 @@ __all__ = [
     "PartAppearance",
     "ProtectionMask",
     "ProtectionResult",
+    "PrintabilityResult",
     "SurfaceFace",
     "SurfaceMap",
     "ValidationIssue",
@@ -49,6 +51,7 @@ __all__ = [
     "compile_part_relief",
     "canonical_protection_masks",
     "clip_protected_relief",
+    "clean_relief_for_fdm",
     "generate_m0_artifacts",
     "mesh_occupancy",
     "mesh_part",
