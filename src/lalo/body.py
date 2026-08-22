@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from lalo.meshing import Mesh, mesh_occupancy
+from lalo.voxel import solid_cuboid
+
 
 @dataclass(frozen=True)
 class PartSpec:
@@ -12,6 +15,14 @@ class PartSpec:
     name: str
     size_xyz: tuple[int, int, int]
     origin_xyz: tuple[int, int, int]
+
+
+def mesh_part(part: PartSpec) -> Mesh:
+    """Compile a body part into a solid mesh at its local origin."""
+
+    size_x, size_y, size_z = part.size_xyz
+    occupancy = solid_cuboid(width=size_x, height=size_y, depth=size_z)
+    return mesh_occupancy(occupancy)
 
 
 # X points toward the character's anatomical left, Y points backward (the
