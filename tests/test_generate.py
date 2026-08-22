@@ -3,10 +3,12 @@ from __future__ import annotations
 import struct
 import tempfile
 import unittest
+import hashlib
+import json
 from pathlib import Path
 
 from lalo.body import CANONICAL_PARTS
-from lalo.generate import write_canonical_stls
+from lalo.generate import write_canonical_manifest, write_canonical_stls
 
 _TRIANGLE = struct.Struct("<12fH")
 
@@ -64,6 +66,56 @@ class CanonicalStlSetTests(unittest.TestCase):
                 with self.subTest(height=height):
                     with self.assertRaisesRegex(ValueError, "height_mm"):
                         write_canonical_stls(Path(directory) / "out", height_mm=height)
+
+
+class CanonicalManifestTests(unittest.TestCase):
+    def test_describes_all_parts_scale_and_coordinate_system(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            write_canonical_stls(directory)
+            manifest_path = write_canonical_manifest(directory)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(manifest["schema_version"], "1.0")
+            self.assertEqual(manifest["height_mm"], 80.0)
+            self.assertEqual(manifest["master_voxel_mm"], 2.5)
+            self.assertEqual(manifest["coordinate_system"]["up_axis"], "+Z")
+            self.assertEqual(len(manifest["parts"]), 14)
+
+            head = manifest["parts"][0]
+            self.assertEqual(head["name"], "head")
+            self.assertEqual(head["size_mm"], [20.0, 20.0, 20.0])
+            self.assertEqual(head["assembly_translation_mm"], [-10.0, -10.0, 60.0])
+            self.assertEqual(head["assembly_rotation_xyzw"], [0.0, 0.0, 0.0, 1.0])
+
+    def test_records_matching_file_sizes_and_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            write_canonical_stls(directory)
+            manifest = json.loads(
+                write_canonical_manifest(directory).read_text(encoding="utf-8")
+            )
+
+            for part in manifest["parts"]:
+                data = (Path(directory) / part["file"]).read_bytes()
+                self.assertEqual(part["byte_size"], len(data))
+                self.assertEqual(part["sha256"], hashlib.sha256(data).hexdigest())
+
+    def test_manifest_is_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            write_canonical_stls(directory)
+            path = write_canonical_manifest(directory)
+            first = path.read_bytes()
+            second = write_canonical_manifest(directory).read_bytes()
+
+            self.assertEqual(first, second)
+
+    def test_missing_stl_prevents_manifest_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            write_canonical_stls(directory)
+            (Path(directory) / "head.stl").unlink()
+
+            with self.assertRaisesRegex(FileNotFoundError, "head.stl"):
+                write_canonical_manifest(directory)
+            self.assertFalse((Path(directory) / "manifest.json").exists())
 
 
 def _triangle_count(path: Path) -> int:
