@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from lalo.appearance import SurfaceFace, SurfaceMap
+from lalo.appearance import SilhouetteFeature, SurfaceFace, SurfaceMap
 from lalo.body import PartSpec
 from lalo.meshing import Mesh, mesh_occupancy
 from lalo.voxel import OccupancyGrid
@@ -22,7 +22,9 @@ class DetailedPart:
 
 
 def compile_part_relief(
-    part: PartSpec, surfaces: tuple[SurfaceMap, ...]
+    part: PartSpec,
+    surfaces: tuple[SurfaceMap, ...],
+    silhouette_features: tuple[SilhouetteFeature, ...] = (),
 ) -> DetailedPart:
     """Apply face-normal relief maps to a solid fine-grid part."""
 
@@ -69,6 +71,9 @@ def compile_part_relief(
                 else:
                     for distance in range(0, -level):
                         _set_cell(grid, surface_cell, normal, -distance, False)
+
+    for feature_index, feature in enumerate(silhouette_features):
+        _fuse_silhouette_feature(grid, feature, padding, feature_index)
 
     occupancy = tuple(
         tuple(tuple(cell for cell in row) for row in layer) for layer in grid
@@ -146,3 +151,60 @@ def _set_cell(
     y = surface_cell[1] + normal[1] * distance
     z = surface_cell[2] + normal[2] * distance
     grid[z][y][x] = value
+
+
+def _fuse_silhouette_feature(
+    grid: list[list[list[bool]]],
+    feature: SilhouetteFeature,
+    padding: int,
+    feature_index: int,
+) -> None:
+    origin = tuple(value + padding for value in feature.origin_detail_xyz)
+    cells = tuple(
+        (x, y, z)
+        for z in range(origin[2], origin[2] + feature.size_detail_xyz[2])
+        for y in range(origin[1], origin[1] + feature.size_detail_xyz[1])
+        for x in range(origin[0], origin[0] + feature.size_detail_xyz[0])
+    )
+    depth, height, width = len(grid), len(grid[0]), len(grid[0][0])
+    if any(
+        x < 0 or x >= width or y < 0 or y >= height or z < 0 or z >= depth
+        for x, y, z in cells
+    ):
+        raise ValueError(
+            f"silhouette feature {feature_index} exceeds the two-cell padding envelope"
+        )
+    cell_set = set(cells)
+    connected = False
+    for x, y, z in cells:
+        if grid[z][y][x]:
+            connected = True
+            break
+        for dx, dy, dz in (
+            (-1, 0, 0),
+            (1, 0, 0),
+            (0, -1, 0),
+            (0, 1, 0),
+            (0, 0, -1),
+            (0, 0, 1),
+        ):
+            neighbor = x + dx, y + dy, z + dz
+            if neighbor in cell_set:
+                continue
+            nx, ny, nz = neighbor
+            if (
+                0 <= nx < width
+                and 0 <= ny < height
+                and 0 <= nz < depth
+                and grid[nz][ny][nx]
+            ):
+                connected = True
+                break
+        if connected:
+            break
+    if not connected:
+        raise ValueError(
+            f"silhouette feature {feature_index} must face-connect to the part"
+        )
+    for x, y, z in cells:
+        grid[z][y][x] = True

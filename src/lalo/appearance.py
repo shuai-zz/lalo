@@ -58,11 +58,38 @@ class SurfaceMap:
 
 
 @dataclass(frozen=True)
+class SilhouetteFeature:
+    """A compact fused box expressed in part-local detail-grid coordinates."""
+
+    origin_detail_xyz: tuple[int, int, int]
+    size_detail_xyz: tuple[int, int, int]
+    material_id: int
+
+    def __post_init__(self) -> None:
+        if any(
+            isinstance(value, bool) or not isinstance(value, int)
+            for value in (*self.origin_detail_xyz, *self.size_detail_xyz)
+        ):
+            raise TypeError("silhouette origin and size values must be integers")
+        if any(value <= 0 for value in self.size_detail_xyz):
+            raise ValueError("silhouette size values must be greater than zero")
+        if any(value > 10 for value in self.size_detail_xyz):
+            raise ValueError("silhouette features must not exceed 10 detail cells per axis")
+        if (
+            isinstance(self.material_id, bool)
+            or not isinstance(self.material_id, int)
+            or not 0 <= self.material_id <= 3
+        ):
+            raise ValueError("silhouette material_id must be between 0 and 3")
+
+
+@dataclass(frozen=True)
 class PartAppearance:
     """Surface appearance maps belonging to one canonical body part."""
 
     part_name: str
     surfaces: tuple[SurfaceMap, ...]
+    silhouette_features: tuple[SilhouetteFeature, ...] = ()
 
     def __post_init__(self) -> None:
         if self.part_name not in _CANONICAL_PART_NAMES:
@@ -105,6 +132,13 @@ class CharacterPlan:
                         f"surface {part.part_name}.{surface.face.value} references "
                         "a missing palette id"
                     )
+            feature_materials = {
+                feature.material_id for feature in part.silhouette_features
+            }
+            if not feature_materials <= valid_materials:
+                raise ValueError(
+                    f"part {part.part_name} silhouette references a missing palette id"
+                )
 
 
 def _validate_grid(name: str, grid: PixelGrid, *, minimum: int, maximum: int) -> None:
