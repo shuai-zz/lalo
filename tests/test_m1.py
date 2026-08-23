@@ -18,13 +18,16 @@ from lalo.appearance import (
 from lalo.body import CANONICAL_PARTS
 from lalo.fixtures import iron_man_plan, spider_man_plan
 from lalo.m1 import generate_m1_artifacts
-from lalo.relief import face_detail_shape
+from lalo.relief import compile_part_relief, face_detail_shape
 
 
 class M1ArtifactTests(unittest.TestCase):
     def test_both_golden_plans_generate_complete_valid_artifacts(self) -> None:
         for builder in (spider_man_plan, iron_man_plan):
-            with self.subTest(builder=builder.__name__), tempfile.TemporaryDirectory() as directory:
+            with (
+                self.subTest(builder=builder.__name__),
+                tempfile.TemporaryDirectory() as directory,
+            ):
                 output = Path(directory) / "result"
                 artifacts = generate_m1_artifacts(builder(), output)
                 files = {
@@ -59,12 +62,16 @@ class M1ArtifactTests(unittest.TestCase):
             artifacts = generate_m1_artifacts(
                 iron_man_plan(), Path(directory) / "result"
             )
-            material_grid = json.loads(gzip.decompress(artifacts.material_grid_path.read_bytes()))
+            material_grid = json.loads(
+                gzip.decompress(artifacts.material_grid_path.read_bytes())
+            )
             self.assertEqual(len(material_grid["palette"]), 4)
 
             document = _glb_json(artifacts.preview_path.read_bytes())
             self.assertEqual(len(document["materials"]), 4)
-            self.assertTrue(any(mesh["name"] == "head_materials" for mesh in document["meshes"]))
+            self.assertTrue(
+                any(mesh["name"] == "head_materials" for mesh in document["meshes"])
+            )
             head_accessor = document["accessors"][
                 document["meshes"][0]["primitives"][0]["attributes"]["POSITION"]
             ]
@@ -89,7 +96,9 @@ class M1ArtifactTests(unittest.TestCase):
             report = json.loads(
                 artifacts.validation_report_path.read_text(encoding="utf-8")
             )
-            head_report = next(part for part in report["parts"] if part["name"] == "head")
+            head_report = next(
+                part for part in report["parts"] if part["name"] == "head"
+            )
             self.assertGreater(head_report["clipped_protected_pixels"], 0)
             processed = json.loads(
                 artifacts.character_plan_path.read_text(encoding="utf-8")
@@ -107,6 +116,35 @@ class M1ArtifactTests(unittest.TestCase):
             generate_m1_artifacts(spider_man_plan(), second)
 
             self.assertEqual(_files(first), _files(second))
+
+    def test_accepts_a_bounded_custom_base_shape(self) -> None:
+        head = CANONICAL_PARTS[0]
+        shape = compile_part_relief(head, ())
+        occupancy = [[list(row) for row in layer] for layer in shape.occupancy]
+        occupancy[41][2][2] = False
+        custom = type(shape)(
+            tuple(
+                tuple(tuple(value for value in row) for row in layer)
+                for layer in occupancy
+            ),
+            shape.origin_detail_xyz,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            artifacts = generate_m1_artifacts(
+                CharacterPlan(
+                    "1.0",
+                    "custom head",
+                    (PaletteEntry(0, "gray", "#777777"),),
+                    (),
+                ),
+                Path(directory) / "result",
+                part_shapes={"head": custom},
+            )
+            report = json.loads(artifacts.validation_report_path.read_text())
+            head_report = next(
+                part for part in report["parts"] if part["name"] == "head"
+            )
+            self.assertEqual(head_report["signed_volume_detail_cells"], 40**3 - 1)
 
 
 def _files(root: Path) -> dict[Path, bytes]:
