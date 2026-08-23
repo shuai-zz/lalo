@@ -14,6 +14,7 @@ from test_design_artifacts import _png_result
 from test_design_materials import _identity, _sheet
 
 from lalo import (
+    ArtifactValidationResult,
     DesignerCapabilities,
     DesignRequest,
     DesignResult,
@@ -34,6 +35,20 @@ class _PNGDesigner(_FakeDesigner):
 
 
 class DesignCLITests(unittest.TestCase):
+    def test_validate_command_reports_machine_stable_errors(self) -> None:
+        stderr = StringIO()
+        with (
+            patch(
+                "lalo.cli.validate_artifact_directory",
+                return_value=ArtifactValidationResult(False, ("invalid_result_zip",)),
+            ),
+            redirect_stderr(stderr),
+        ):
+            status = main(["validate", "/tmp/result"])
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr.getvalue(), "invalid_result_zip\n")
+
     def test_design_command_writes_inspectable_views(self) -> None:
         with tempfile.TemporaryDirectory() as parent:
             output = Path(parent) / "hero"

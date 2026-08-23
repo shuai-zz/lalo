@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from lalo.artifact_validation import validate_artifact_directory
 from lalo.design import CharacterDesigner, DesignRequest
 from lalo.design_artifacts import load_design_artifacts, write_design_artifacts
 from lalo.design_crops import crop_design_parts
@@ -34,6 +35,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.command is None:
         parser.print_help()
         return 0
+    if arguments.command == "validate":
+        result = validate_artifact_directory(arguments.artifact_directory)
+        if result.valid:
+            print("valid")
+            return 0
+        for error in result.errors:
+            print(error, file=sys.stderr)
+        return 1
     output = Path(arguments.output)
     if output.exists():
         parser.error(f"output already exists: {output}")
@@ -63,6 +72,10 @@ def _parser() -> argparse.ArgumentParser:
     compile_design.add_argument("design_directory", type=Path)
     compile_design.add_argument("--output", type=Path, required=True)
     compile_design.add_argument("--height", type=float, default=96.0)
+    validate = commands.add_parser(
+        "validate", help="independently verify a printable artifact directory"
+    )
+    validate.add_argument("artifact_directory", type=Path)
     return parser
 
 
