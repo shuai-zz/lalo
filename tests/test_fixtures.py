@@ -36,7 +36,7 @@ class CharacterFixtureTests(unittest.TestCase):
             )
         )
         self.assertTrue(any(value > 0 for row in head.relief for value in row))
-        self.assertIn(2, {value for row in torso.materials for value in row})
+        self.assertNotIn(2, {value for row in torso.materials for value in row})
         self.assertTrue(all(value == 1 for row in thigh.materials for value in row))
 
     def test_spider_man_eyes_are_tapered_mirrored_voxel_masks(self) -> None:
@@ -82,21 +82,46 @@ class CharacterFixtureTests(unittest.TestCase):
             all(head.materials[row][column] == 2 for row, column in expected_outline)
         )
 
-    def test_spider_man_chest_has_symmetric_eight_legged_spider_emblem(self) -> None:
+    def test_spider_man_web_grooves_keep_the_underlying_suit_color(self) -> None:
+        plan = spider_man_plan()
+        head = _surface_for(plan, "head", "front")
+
+        self.assertTrue(
+            any(
+                head.relief[row][column] < 0 and material == 0
+                for row, values in enumerate(head.materials)
+                for column, material in enumerate(values)
+            )
+        )
+        for appearance in plan.parts:
+            if appearance.part_name == "head":
+                continue
+            self.assertNotIn(
+                2,
+                {
+                    material
+                    for surface in appearance.surfaces
+                    for row in surface.materials
+                    for material in row
+                },
+            )
+
+    def test_spider_man_chest_has_symmetric_uncolored_engraved_emblem(self) -> None:
         torso = _surface_for(spider_man_plan(), "torso", "front")
         width = len(torso.materials[0])
-        raised_black = {
+        engraved = {
             (row, column)
             for row, values in enumerate(torso.materials)
-            for column, material in enumerate(values)
-            if material == 2 and torso.relief[row][column] > 0
+            for column, _material in enumerate(values)
+            if 17 <= row <= 34 and torso.relief[row][column] < 0
         }
-        left = {(row, column) for row, column in raised_black if column < width // 2}
-        right = {(row, column) for row, column in raised_black if column >= width // 2}
+        left = {(row, column) for row, column in engraved if column < width // 2}
+        right = {(row, column) for row, column in engraved if column >= width // 2}
 
-        self.assertGreater(len(raised_black), 50)
-        self.assertGreaterEqual(len({row for row, _ in raised_black}), 16)
+        self.assertGreater(len(engraved), 50)
+        self.assertGreaterEqual(len({row for row, _ in engraved}), 16)
         self.assertEqual(right, {(row, width - 1 - column) for row, column in left})
+        self.assertNotIn(2, {material for row in torso.materials for material in row})
 
     def test_spider_man_has_red_webbed_boots_below_blue_legs(self) -> None:
         shin = _surface_for(spider_man_plan(), "left_shin", "front")
@@ -105,10 +130,7 @@ class CharacterFixtureTests(unittest.TestCase):
         self.assertTrue(all(material == 1 for material in shin.materials[0]))
         self.assertIn(0, shin.materials[-1])
         self.assertTrue(any(value < 0 for row in shin.relief for value in row))
-        self.assertGreater(
-            sum(material == 0 for row in foot.materials for material in row),
-            sum(material == 2 for row in foot.materials for material in row),
-        )
+        self.assertTrue(all(material == 0 for row in foot.materials for material in row))
 
     def test_spider_man_identity_details_wrap_around_visible_faces(self) -> None:
         plan = spider_man_plan()
@@ -120,11 +142,12 @@ class CharacterFixtureTests(unittest.TestCase):
         self.assertEqual(torso_faces, {"front", "back", "left", "right"})
         self.assertTrue(
             any(
-                material == 0 and back.relief[row][column] > 0
+                material in (0, 1) and back.relief[row][column] < 0
                 for row, values in enumerate(back.materials)
                 for column, material in enumerate(values)
             )
         )
+        self.assertNotIn(2, {material for row in back.materials for material in row})
 
     def test_iron_man_contains_gold_faceplate_cyan_eyes_and_reactor(self) -> None:
         plan = iron_man_plan()
