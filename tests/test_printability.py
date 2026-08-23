@@ -12,7 +12,7 @@ class ReliefPrintabilityTests(unittest.TestCase):
 
         result = clean_relief_for_fdm(surface)
 
-        self.assertEqual(result.detail_pitch_mm, 0.5)
+        self.assertEqual(result.detail_pitch_mm, 0.6)
         self.assertEqual(result.expanded_pixel_count, 3)
         self.assertEqual(_nonzero_count(result.surface.relief), 4)
         self.assertEqual(result.depth_adjustment_count, 0)

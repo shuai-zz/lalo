@@ -24,7 +24,7 @@ class PrintabilityResult:
 def clean_relief_for_fdm(
     surface: SurfaceMap,
     *,
-    height_mm: float = 80.0,
+    height_mm: float = 96.0,
     minimum_line_width_mm: float = 0.8,
     minimum_depth_mm: float = 0.4,
 ) -> PrintabilityResult:

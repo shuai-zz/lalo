@@ -12,7 +12,7 @@ from lalo.body import CANONICAL_PARTS, mesh_part
 from lalo.stl import binary_stl_bytes
 
 MASTER_HEIGHT_VOXELS = 32
-DEFAULT_HEIGHT_MM = 80.0
+DEFAULT_HEIGHT_MM = 96.0
 
 
 def write_canonical_stls(

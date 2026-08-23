@@ -25,12 +25,12 @@ class CanonicalStlSetTests(unittest.TestCase):
             self.assertTrue(all(path.is_file() for path in paths))
             self.assertTrue(all(_triangle_count(path) > 0 for path in paths))
 
-    def test_scales_head_to_default_twenty_millimeter_cube(self) -> None:
+    def test_scales_head_to_default_twenty_four_millimeter_cube(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             paths = write_canonical_stls(directory)
             head_path = next(path for path in paths if path.name == "head.stl")
 
-            self.assertEqual(_bounds(head_path), ((0.0, 0.0, 0.0), (20.0, 20.0, 20.0)))
+            self.assertEqual(_bounds(head_path), ((0.0, 0.0, 0.0), (24.0, 24.0, 24.0)))
 
     def test_custom_height_scales_coordinates(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -76,15 +76,15 @@ class CanonicalManifestTests(unittest.TestCase):
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
             self.assertEqual(manifest["schema_version"], "1.0")
-            self.assertEqual(manifest["height_mm"], 80.0)
-            self.assertEqual(manifest["master_voxel_mm"], 2.5)
+            self.assertEqual(manifest["height_mm"], 96.0)
+            self.assertEqual(manifest["master_voxel_mm"], 3.0)
             self.assertEqual(manifest["coordinate_system"]["up_axis"], "+Z")
             self.assertEqual(len(manifest["parts"]), 14)
 
             head = manifest["parts"][0]
             self.assertEqual(head["name"], "head")
-            self.assertEqual(head["size_mm"], [20.0, 20.0, 20.0])
-            self.assertEqual(head["assembly_translation_mm"], [-10.0, -10.0, 60.0])
+            self.assertEqual(head["size_mm"], [24.0, 24.0, 24.0])
+            self.assertEqual(head["assembly_translation_mm"], [-12.0, -12.0, 72.0])
             self.assertEqual(head["assembly_rotation_xyzw"], [0.0, 0.0, 0.0, 1.0])
 
     def test_records_matching_file_sizes_and_hashes(self) -> None:

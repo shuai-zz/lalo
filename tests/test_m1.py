@@ -47,8 +47,8 @@ class M1ArtifactTests(unittest.TestCase):
             artifacts = generate_m1_artifacts(spider_man_plan(), output)
             manifest = json.loads(artifacts.manifest_path.read_text(encoding="utf-8"))
 
-            self.assertEqual(manifest["height_mm"], 80.0)
-            self.assertEqual(manifest["detail_pitch_mm"], 0.5)
+            self.assertEqual(manifest["height_mm"], 96.0)
+            self.assertEqual(manifest["detail_pitch_mm"], 0.6)
             head = next(part for part in manifest["parts"] if part["name"] == "head")
             self.assertLess(head["local_bounds_mm"][0][1], 0.0)
             data = (output / head["file"]).read_bytes()

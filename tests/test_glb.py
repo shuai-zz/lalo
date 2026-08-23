@@ -51,8 +51,8 @@ class CanonicalGlbTests(unittest.TestCase):
             ]["POSITION"]
             head_accessor = document["accessors"][head_position_accessor]
 
-            self.assertEqual(head_accessor["max"], [20.0, 20.0, 20.0])
-            self.assertEqual(head_node["translation"], [-10.0, -10.0, 60.0])
+            self.assertEqual(head_accessor["max"], [24.0, 24.0, 24.0])
+            self.assertEqual(head_node["translation"], [-12.0, -12.0, 72.0])
             self.assertEqual(
                 root["rotation"],
                 [-math.sqrt(0.5), 0.0, 0.0, math.sqrt(0.5)],
@@ -66,7 +66,7 @@ class CanonicalGlbTests(unittest.TestCase):
                 ]["max"][2]
                 for node in document["nodes"][1:]
             )
-            self.assertEqual(assembled_top_z, 80.0)
+            self.assertEqual(assembled_top_z, 96.0)
 
     def test_output_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
