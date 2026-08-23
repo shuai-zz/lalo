@@ -32,7 +32,7 @@ The MVP is for 3D-printing hobbyists using basic FDM printers. It optimizes for 
 - One optional reference image containing exactly one person or character.
 - Human-shaped, bipedal characters only.
 - A single Minecraft-like body proportion.
-- Default assembled height of 80 mm, overridable with `height_mm`.
+- Default assembled height of 96 mm, overridable with `height_mm`.
 - Block-shaped hands and feet, with no fingers.
 - Recognizable surface relief and limited silhouette additions.
 - Separate STL files for all body parts.
@@ -102,7 +102,9 @@ The canonical body uses Minecraft-like dimensions measured in master voxels:
 | Each complete arm | 4 | 12 | 4 |
 | Each complete leg | 4 | 12 | 4 |
 
-Total standing height is 32 master voxels. At the default 80 mm height, one master voxel is 2.5 mm.
+Total standing height is 32 master voxels. At the default 96 mm height, one master voxel is 3 mm. The envelope follows Mojang's canonical Bedrock humanoid dimensions: <https://github.com/Mojang/bedrock-samples/blob/main/resource_pack/models/entity/humanoid.custom.geo.json>.
+
+The assembled preview adds a 0.8 mm neutral gap between the legs so they remain visually distinct. This is an assembly transform only: exported part-local geometry retains the canonical four-master-voxel leg width, and the gap is independent of future joint clearance.
 
 The exact split points between upper/lower limb segments and hands/feet are configuration data and may later change to accommodate the joint library. The assembled outer proportions remain canonical unless a future spec version changes them.
 
@@ -142,8 +144,8 @@ The exact protected masks and clearance volumes will be supplied by the future j
 
 ### 5.1 Two-resolution representation
 
-- Master grid: 2.5 mm at 80 mm total height; defines body proportions and large silhouette features.
-- Detail grid: nominal 0.5 mm at 80 mm total height; defines surface pixels and relief.
+- Master grid: 3 mm at 96 mm total height; defines body proportions and large silhouette features.
+- Detail grid: nominal 0.6 mm at 96 mm total height; defines surface pixels and relief.
 - All dimensions scale linearly with `height_mm`, but printability limits are expressed in physical millimeters and do not scale below safe values.
 
 The detail grid is aligned to the master grid. Five detail cells span one master voxel at the default height.
@@ -294,7 +296,7 @@ Recommended implementation:
 - Optional FastAPI service sharing the same application layer.
 - No Blender runtime or headless Blender dependency.
 
-Dense detail grids are sufficient for the MVP: an 80 mm figure at 0.5 mm resolution has a small bounded volume per independently generated part. Sparse VDB storage is deferred until profiling proves it necessary.
+Dense detail grids are sufficient for the MVP: a 96 mm figure at 0.6 mm resolution has a small bounded volume per independently generated part. Sparse VDB storage is deferred until profiling proves it necessary.
 
 ## 9. CLI
 
