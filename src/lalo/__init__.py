@@ -64,6 +64,7 @@ from lalo.relief import (
     mesh_detailed_part,
 )
 from lalo.stl import binary_stl_bytes, write_binary_stl
+from lalo.skin_atlas import character_plan_from_skin_atlas
 from lalo.validation import MeshValidation, ValidationIssue, validate_mesh
 from lalo.voxel import OccupancyGrid, solid_cuboid
 
@@ -107,6 +108,7 @@ __all__ = [
     "assembly_translation_mm",
     "character_plan_from_dict",
     "character_plan_from_json",
+    "character_plan_from_skin_atlas",
     "character_plan_to_dict",
     "character_plan_to_json",
     "compile_part_relief",
