@@ -87,6 +87,15 @@ class CanonicalManifestTests(unittest.TestCase):
             self.assertEqual(head["assembly_translation_mm"], [-12.0, -12.0, 72.0])
             self.assertEqual(head["assembly_rotation_xyzw"], [0.0, 0.0, 0.0, 1.0])
 
+            left_thigh = next(
+                part for part in manifest["parts"] if part["name"] == "left_thigh"
+            )
+            right_thigh = next(
+                part for part in manifest["parts"] if part["name"] == "right_thigh"
+            )
+            self.assertEqual(left_thigh["assembly_translation_mm"][0], 0.4)
+            self.assertEqual(right_thigh["assembly_translation_mm"][0], -12.4)
+
     def test_records_matching_file_sizes_and_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             write_canonical_stls(directory)

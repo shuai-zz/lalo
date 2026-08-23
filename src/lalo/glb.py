@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from lalo.appearance import CharacterPlan, SurfaceFace, SurfaceMap
-from lalo.body import CANONICAL_PARTS, mesh_part
+from lalo.body import CANONICAL_PARTS, assembly_translation_mm, mesh_part
 from lalo.generate import DEFAULT_HEIGHT_MM, MASTER_HEIGHT_VOXELS
 from lalo.meshing import Mesh
 from lalo.relief import DETAIL_CELLS_PER_MASTER, face_detail_shape
@@ -163,7 +163,7 @@ def _build_document(
             {
                 "name": part.name,
                 "mesh": mesh_index,
-                "translation": [value * scale_mm for value in part.origin_xyz],
+                "translation": list(assembly_translation_mm(part, scale_mm)),
             }
         )
 
@@ -265,7 +265,7 @@ def _append_material_overlays(
             {
                 "name": f"{part.name}_materials",
                 "mesh": mesh_index,
-                "translation": [value * scale_mm for value in part.origin_xyz],
+                "translation": list(assembly_translation_mm(part, scale_mm)),
             }
         )
         root_children.append(node_index)

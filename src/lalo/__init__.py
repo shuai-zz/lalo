@@ -8,7 +8,13 @@ from lalo.appearance import (
     SurfaceFace,
     SurfaceMap,
 )
-from lalo.body import CANONICAL_PARTS, PartSpec, mesh_part
+from lalo.body import (
+    CANONICAL_PARTS,
+    DEFAULT_LEG_GAP_MM,
+    PartSpec,
+    assembly_translation_mm,
+    mesh_part,
+)
 from lalo.generate import write_canonical_manifest, write_canonical_stls
 from lalo.fixtures import iron_man_plan, spider_man_plan
 from lalo.glb import write_canonical_glb
@@ -67,6 +73,7 @@ __all__ = [
     "CharacterPlanCodecError",
     "CharacterPlanner",
     "DETAIL_CELLS_PER_MASTER",
+    "DEFAULT_LEG_GAP_MM",
     "DetailedPart",
     "Mesh",
     "MeshValidation",
@@ -97,6 +104,7 @@ __all__ = [
     "SilhouetteFeature",
     "ValidationIssue",
     "binary_stl_bytes",
+    "assembly_translation_mm",
     "character_plan_from_dict",
     "character_plan_from_json",
     "character_plan_to_dict",

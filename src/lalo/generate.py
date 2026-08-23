@@ -8,7 +8,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from lalo.body import CANONICAL_PARTS, mesh_part
+from lalo.body import CANONICAL_PARTS, assembly_translation_mm, mesh_part
 from lalo.stl import binary_stl_bytes
 
 MASTER_HEIGHT_VOXELS = 32
@@ -68,9 +68,9 @@ def write_canonical_manifest(
                 "name": part.name,
                 "file": relative_file,
                 "size_mm": [value * scale_mm for value in part.size_xyz],
-                "assembly_translation_mm": [
-                    value * scale_mm for value in part.origin_xyz
-                ],
+                "assembly_translation_mm": list(
+                    assembly_translation_mm(part, scale_mm)
+                ),
                 "assembly_rotation_xyzw": [0.0, 0.0, 0.0, 1.0],
                 "byte_size": len(stl_data),
                 "sha256": hashlib.sha256(stl_data).hexdigest(),

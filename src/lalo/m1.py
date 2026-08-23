@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from lalo.appearance import CharacterPlan, PartAppearance, SurfaceMap
-from lalo.body import CANONICAL_PARTS
+from lalo.body import CANONICAL_PARTS, assembly_translation_mm
 from lalo.generate import DEFAULT_HEIGHT_MM, MASTER_HEIGHT_VOXELS
 from lalo.glb import write_canonical_glb
 from lalo.meshing import Mesh
@@ -178,9 +178,9 @@ def _write_manifest(
                     [value * detail_pitch for value in bounds[0]],
                     [value * detail_pitch for value in bounds[1]],
                 ],
-                "assembly_translation_mm": [
-                    value * master_scale for value in spec.origin_xyz
-                ],
+                "assembly_translation_mm": list(
+                    assembly_translation_mm(spec, master_scale)
+                ),
                 "assembly_rotation_xyzw": [0.0, 0.0, 0.0, 1.0],
                 "byte_size": len(data),
                 "sha256": hashlib.sha256(data).hexdigest(),
