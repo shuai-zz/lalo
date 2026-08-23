@@ -38,7 +38,7 @@ class M0ArtifactTests(unittest.TestCase):
             artifacts = generate_m0_artifacts(output)
             manifest = json.loads(artifacts.manifest_path.read_text(encoding="utf-8"))
 
-            self.assertEqual(manifest["height_mm"], 80.0)
+            self.assertEqual(manifest["height_mm"], 96.0)
             for entry in manifest["parts"]:
                 self.assertTrue(entry["file"].startswith("stl/"))
                 data = (output / entry["file"]).read_bytes()

@@ -40,6 +40,6 @@ CANONICAL_PARTS: tuple[PartSpec, ...] = (
     PartSpec("right_thigh", (4, 4, 5), (-4, -2, 7)),
     PartSpec("left_shin", (4, 4, 5), (0, -2, 2)),
     PartSpec("right_shin", (4, 4, 5), (-4, -2, 2)),
-    PartSpec("left_foot", (4, 6, 2), (0, -4, 0)),
-    PartSpec("right_foot", (4, 6, 2), (-4, -4, 0)),
+    PartSpec("left_foot", (4, 4, 2), (0, -2, 0)),
+    PartSpec("right_foot", (4, 4, 2), (-4, -2, 0)),
 )

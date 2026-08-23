@@ -93,7 +93,7 @@ class CanonicalBodyTests(unittest.TestCase):
         parts = _by_name()
 
         self.assertEqual(_bounds(mesh_part(parts["torso"]))[1], (8, 4, 12))
-        self.assertEqual(_bounds(mesh_part(parts["left_foot"]))[1], (4, 6, 2))
+        self.assertEqual(_bounds(mesh_part(parts["left_foot"]))[1], (4, 4, 2))
 
     def test_assembled_origin_does_not_change_local_mesh(self) -> None:
         first = PartSpec("example", (2, 3, 4), (0, 0, 0))
