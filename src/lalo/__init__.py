@@ -35,6 +35,7 @@ from lalo.designing import (
     UnsupportedDesignerError,
     design_character,
 )
+from lalo.design_artifacts import write_design_artifacts
 from lalo.generate import write_canonical_manifest, write_canonical_stls
 from lalo.fixtures import iron_man_plan, spider_man_plan
 from lalo.glb import write_canonical_glb
@@ -180,4 +181,5 @@ __all__ = [
     "write_canonical_stls",
     "write_binary_stl",
     "write_canonical_glb",
+    "write_design_artifacts",
 ]
