@@ -42,6 +42,7 @@ from lalo.design_artifacts import (
 )
 from lalo.design_crops import DesignPartCrop, DesignPartCrops, crop_design_parts
 from lalo.design_materials import sample_design_materials
+from lalo.design_shape import compile_head_visual_hull
 from lalo.generate import write_canonical_manifest, write_canonical_stls
 from lalo.fixtures import iron_man_plan, spider_man_plan
 from lalo.glb import write_canonical_glb
@@ -166,6 +167,7 @@ __all__ = [
     "character_plan_to_dict",
     "character_plan_to_json",
     "compile_part_relief",
+    "compile_head_visual_hull",
     "crop_design_parts",
     "canonical_protection_masks",
     "clip_protected_relief",
