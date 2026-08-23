@@ -6,6 +6,7 @@ import json
 import struct
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 from lalo.appearance import (
@@ -37,7 +38,19 @@ class M1ArtifactTests(unittest.TestCase):
                 }
 
                 self.assertEqual(len(artifacts.stl_paths), 14)
-                self.assertEqual(len(files), 19)
+                self.assertEqual(len(files), 20)
+                self.assertTrue(artifacts.package_path.is_file())
+                with zipfile.ZipFile(artifacts.package_path) as archive:
+                    self.assertEqual(
+                        len(
+                            [
+                                name
+                                for name in archive.namelist()
+                                if name.endswith(".stl")
+                            ]
+                        ),
+                        14,
+                    )
                 report = json.loads(
                     artifacts.validation_report_path.read_text(encoding="utf-8")
                 )

@@ -80,6 +80,7 @@ from lalo.planner import (
     SUPPORTED_IMAGE_MEDIA_TYPES,
 )
 from lalo.planning import SingleSubjectError, UnsupportedPlannerError, plan_character
+from lalo.packaging import write_artifact_zip
 from lalo.protection import (
     ProtectionMask,
     ProtectionResult,
@@ -200,4 +201,5 @@ __all__ = [
     "write_binary_stl",
     "write_canonical_glb",
     "write_design_artifacts",
+    "write_artifact_zip",
 ]
