@@ -36,6 +36,7 @@ from lalo.designing import (
     design_character,
 )
 from lalo.design_artifacts import write_design_artifacts
+from lalo.design_crops import DesignPartCrop, DesignPartCrops, crop_design_parts
 from lalo.generate import write_canonical_manifest, write_canonical_stls
 from lalo.fixtures import iron_man_plan, spider_man_plan
 from lalo.glb import write_canonical_glb
@@ -107,6 +108,8 @@ __all__ = [
     "DEFAULT_LEG_GAP_MM",
     "DetailedPart",
     "DesignRaster",
+    "DesignPartCrop",
+    "DesignPartCrops",
     "DesignRequest",
     "DesignResult",
     "DesignSubjectError",
@@ -157,6 +160,7 @@ __all__ = [
     "character_plan_to_dict",
     "character_plan_to_json",
     "compile_part_relief",
+    "crop_design_parts",
     "canonical_protection_masks",
     "clip_protected_relief",
     "clean_relief_for_fdm",
