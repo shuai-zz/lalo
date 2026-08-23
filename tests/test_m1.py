@@ -120,14 +120,16 @@ class M1ArtifactTests(unittest.TestCase):
     def test_accepts_a_bounded_custom_base_shape(self) -> None:
         head = CANONICAL_PARTS[0]
         shape = compile_part_relief(head, ())
-        occupancy = [[list(row) for row in layer] for layer in shape.occupancy]
-        occupancy[41][2][2] = False
+        occupancy = [
+            [list(row[2:42]) for row in layer[2:42]] for layer in shape.occupancy[2:42]
+        ]
+        occupancy[39][0][0] = False
         custom = type(shape)(
             tuple(
                 tuple(tuple(value for value in row) for row in layer)
                 for layer in occupancy
             ),
-            shape.origin_detail_xyz,
+            (0, 0, 0),
         )
         with tempfile.TemporaryDirectory() as directory:
             artifacts = generate_m1_artifacts(

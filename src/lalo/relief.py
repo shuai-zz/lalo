@@ -62,9 +62,7 @@ def compile_part_relief(
             for column, level in enumerate(relief_row):
                 if level == 0:
                     continue
-                surface_cell = _surface_cell(
-                    surface.face, row, column, sizes, padding
-                )
+                surface_cell = _surface_cell(surface.face, row, column, sizes, padding)
                 if level > 0:
                     for distance in range(1, level + 1):
                         _set_cell(grid, surface_cell, normal, distance, True)
@@ -82,6 +80,161 @@ def compile_part_relief(
         occupancy=occupancy,
         origin_detail_xyz=(-padding, -padding, -padding),
     )
+
+
+def apply_relief_to_shape(
+    part: PartSpec,
+    shape: DetailedPart,
+    surfaces: tuple[SurfaceMap, ...],
+) -> DetailedPart:
+    """Project relief along the actual boundary of a canonical custom shape."""
+
+    size_x, size_y, size_z = (
+        value * DETAIL_CELLS_PER_MASTER for value in part.size_xyz
+    )
+    actual_dimensions = (
+        len(shape.occupancy),
+        len(shape.occupancy[0]),
+        len(shape.occupancy[0][0]),
+    )
+    if shape.origin_detail_xyz != (0, 0, 0) or actual_dimensions != (
+        size_z,
+        size_y,
+        size_x,
+    ):
+        raise ValueError(
+            f"custom shape {part.name} must exactly match its canonical detail envelope"
+        )
+    faces = tuple(surface.face for surface in surfaces)
+    if len(set(faces)) != len(faces):
+        raise ValueError("part relief contains duplicate surface faces")
+    padding = _RELIEF_PADDING
+    grid = [
+        [
+            [False for _ in range(size_x + padding * 2)]
+            for _ in range(size_y + padding * 2)
+        ]
+        for _ in range(size_z + padding * 2)
+    ]
+    for z in range(size_z):
+        for y in range(size_y):
+            for x in range(size_x):
+                grid[z + padding][y + padding][x + padding] = shape.occupancy[z][y][x]
+    for surface in surfaces:
+        expected = face_detail_shape(part, surface.face)
+        actual = len(surface.relief), len(surface.relief[0])
+        if actual != expected:
+            raise ValueError(
+                f"{part.name}.{surface.face.value} relief map must be "
+                f"{expected[0]}x{expected[1]}, got {actual[0]}x{actual[1]}"
+            )
+        normal = _normal(surface.face)
+        for row, values in enumerate(surface.relief):
+            for column, level in enumerate(values):
+                if level == 0:
+                    continue
+                boundary = _shape_boundary_cell(
+                    shape.occupancy, surface.face, row, column
+                )
+                if boundary is None or not _locally_planar_boundary(
+                    shape.occupancy, surface.face, row, column, boundary
+                ):
+                    continue
+                padded = tuple(value + padding for value in boundary)
+                if level > 0:
+                    for distance in range(1, level + 1):
+                        _set_cell(grid, padded, normal, distance, True)
+                else:
+                    for distance in range(-level):
+                        _set_cell(grid, padded, normal, -distance, False)
+    return DetailedPart(
+        tuple(tuple(tuple(value for value in row) for row in layer) for layer in grid),
+        (-padding, -padding, -padding),
+    )
+
+
+def _shape_boundary_cell(
+    occupancy: OccupancyGrid,
+    face: SurfaceFace,
+    row: int,
+    column: int,
+) -> tuple[int, int, int] | None:
+    size_z, size_y, size_x = (
+        len(occupancy),
+        len(occupancy[0]),
+        len(occupancy[0][0]),
+    )
+    z = size_z - 1 - row
+    if face in (SurfaceFace.FRONT, SurfaceFace.BACK):
+        candidates = [y for y in range(size_y) if occupancy[z][y][column]]
+        if not candidates:
+            return None
+        y = min(candidates) if face == SurfaceFace.FRONT else max(candidates)
+        return column, y, z
+    if face in (SurfaceFace.LEFT, SurfaceFace.RIGHT):
+        candidates = [x for x in range(size_x) if occupancy[z][column][x]]
+        if not candidates:
+            return None
+        x = max(candidates) if face == SurfaceFace.LEFT else min(candidates)
+        return x, column, z
+    if face == SurfaceFace.TOP:
+        candidates = [
+            z_value for z_value in range(size_z) if occupancy[z_value][row][column]
+        ]
+        return (column, row, max(candidates)) if candidates else None
+    candidates = [
+        z_value for z_value in range(size_z) if occupancy[z_value][row][column]
+    ]
+    return (column, row, min(candidates)) if candidates else None
+
+
+def _locally_planar_boundary(
+    occupancy: OccupancyGrid,
+    face: SurfaceFace,
+    row: int,
+    column: int,
+    boundary: tuple[int, int, int],
+) -> bool:
+    size_z, size_y, size_x = (
+        len(occupancy),
+        len(occupancy[0]),
+        len(occupancy[0][0]),
+    )
+    max_rows = (
+        size_z
+        if face
+        in (
+            SurfaceFace.FRONT,
+            SurfaceFace.BACK,
+            SurfaceFace.LEFT,
+            SurfaceFace.RIGHT,
+        )
+        else size_y
+    )
+    max_columns = (
+        size_y
+        if face
+        in (
+            SurfaceFace.LEFT,
+            SurfaceFace.RIGHT,
+        )
+        else size_x
+    )
+    normal_axis = 1 if face in (SurfaceFace.FRONT, SurfaceFace.BACK) else 0
+    if face in (SurfaceFace.TOP, SurfaceFace.BOTTOM):
+        normal_axis = 2
+    for next_row, next_column in (
+        (row - 1, column),
+        (row + 1, column),
+        (row, column - 1),
+        (row, column + 1),
+    ):
+        if not (0 <= next_row < max_rows and 0 <= next_column < max_columns):
+            return False
+        neighbor = _shape_boundary_cell(occupancy, face, next_row, next_column)
+        if neighbor is None or neighbor[normal_axis] != boundary[normal_axis]:
+            return False
+    return True
 
 
 def mesh_detailed_part(part: DetailedPart) -> Mesh:

@@ -4,7 +4,7 @@ import unittest
 
 from lalo.appearance import SilhouetteFeature, SurfaceFace, SurfaceMap
 from lalo.body import PartSpec
-from lalo.relief import compile_part_relief, mesh_detailed_part
+from lalo.relief import apply_relief_to_shape, compile_part_relief, mesh_detailed_part
 from lalo.validation import validate_mesh
 
 
@@ -41,17 +41,13 @@ class ReliefCompilerTests(unittest.TestCase):
         for face, expected_bounds in expectations.items():
             with self.subTest(face=face):
                 mesh = mesh_detailed_part(
-                    compile_part_relief(
-                        self.part, (_surface(face, center_level=1),)
-                    )
+                    compile_part_relief(self.part, (_surface(face, center_level=1),))
                 )
                 self.assertEqual(_bounds(mesh), expected_bounds)
 
     def test_level_two_extends_two_detail_cells(self) -> None:
         mesh = mesh_detailed_part(
-            compile_part_relief(
-                self.part, (_surface(SurfaceFace.TOP, center_level=2),)
-            )
+            compile_part_relief(self.part, (_surface(SurfaceFace.TOP, center_level=2),))
         )
 
         self.assertEqual(_bounds(mesh)[1][2], 7)
@@ -87,6 +83,34 @@ class ReliefCompilerTests(unittest.TestCase):
         self.assertEqual(_volume(mesh), 133.0)
         self.assertTrue(validate_mesh(mesh).valid)
 
+    def test_projects_relief_from_the_actual_custom_shape_boundary(self) -> None:
+        base = compile_part_relief(self.part, ())
+        occupancy = tuple(
+            tuple(tuple(value for value in row[2:7]) for row in layer[2:7])
+            for layer in base.occupancy[2:7]
+        )
+        values = [[list(row) for row in layer] for layer in occupancy]
+        for z in range(5):
+            for x in range(5):
+                values[z][0][x] = False
+        shape = type(base)(
+            tuple(
+                tuple(tuple(value for value in row) for row in layer)
+                for layer in values
+            ),
+            (0, 0, 0),
+        )
+
+        detailed = apply_relief_to_shape(
+            self.part,
+            shape,
+            (_surface(SurfaceFace.FRONT, center_level=1),),
+        )
+        mesh = mesh_detailed_part(detailed)
+
+        self.assertEqual(_bounds(mesh)[0][1], 0)
+        self.assertTrue(validate_mesh(mesh).valid)
+
     def test_rejects_floating_or_out_of_envelope_silhouette(self) -> None:
         floating = SilhouetteFeature((-2, -2, -2), (1, 1, 1), 0)
         with self.assertRaisesRegex(ValueError, "face-connect"):
@@ -98,7 +122,12 @@ class ReliefCompilerTests(unittest.TestCase):
 
 
 def _surface(face: SurfaceFace, center_level: int = 0) -> SurfaceMap:
-    if face in (SurfaceFace.FRONT, SurfaceFace.BACK, SurfaceFace.LEFT, SurfaceFace.RIGHT):
+    if face in (
+        SurfaceFace.FRONT,
+        SurfaceFace.BACK,
+        SurfaceFace.LEFT,
+        SurfaceFace.RIGHT,
+    ):
         height, width = 5, 5
     else:
         height, width = 5, 5
