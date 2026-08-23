@@ -77,7 +77,7 @@ def _spider_surface(part: PartSpec, face: SurfaceFace) -> SurfaceMap:
                 if row >= 38 or (row >= 24 and (column < 8 or column >= columns - 8)):
                     materials[row][column] = 1
         _draw_torso_web(materials, relief)
-        _draw_spider_emblem(materials, relief)
+        _draw_spider_emblem(materials, relief, material=2)
     elif part.name == "torso" and face == SurfaceFace.BACK:
         materials = _grid(rows, columns, 1)
         _rectangle(materials, relief, 0, 13, 0, columns, 0, 0)
@@ -179,31 +179,37 @@ def _draw_torso_web(materials: list[list[int]], relief: list[list[int]]) -> None
 
 
 def _draw_spider_emblem(
-    materials: list[list[int]], relief: list[list[int]]
+    materials: list[list[int]],
+    relief: list[list[int]],
+    *,
+    material: int | None = None,
 ) -> None:
-    """Engrave an eight-legged spider without changing suit color."""
+    """Engrave a compact spider with a distinct head, abdomen, and eight legs."""
 
     columns = len(materials[0])
     center = columns // 2
-    _rectangle(materials, relief, 19, 22, center - 1, center + 1, None, -1)
-    _rectangle(materials, relief, 22, 26, center - 2, center + 2, None, -1)
-    _rectangle(materials, relief, 26, 30, center - 1, center + 1, None, -1)
+    _rectangle(materials, relief, 18, 21, center - 2, center + 2, material, -1)
+    _rectangle(materials, relief, 21, 23, center - 1, center + 1, material, -1)
+    _rectangle(materials, relief, 23, 25, center - 3, center + 3, material, -1)
+    _rectangle(materials, relief, 25, 29, center - 4, center + 4, material, -1)
+    _rectangle(materials, relief, 29, 31, center - 3, center + 3, material, -1)
+    _rectangle(materials, relief, 31, 33, center - 2, center + 2, material, -1)
 
     left_legs = (
-        ((21, center - 1), (18, center - 4), (17, center - 8)),
-        ((23, center - 2), (21, center - 5), (21, center - 8)),
-        ((25, center - 2), (27, center - 5), (28, center - 8)),
-        ((28, center - 1), (30, center - 4), (33, center - 7)),
+        ((20, center - 2), (17, center - 6), (15, center - 10)),
+        ((23, center - 3), (21, center - 8), (20, center - 12)),
+        ((26, center - 3), (28, center - 8), (30, center - 12)),
+        ((29, center - 2), (32, center - 6), (35, center - 10)),
     )
     for points in left_legs:
         for start, end in zip(points, points[1:]):
-            _draw_orthogonal_line(materials, relief, start, end, None, -1)
-            _draw_orthogonal_line(
+            _draw_line(materials, relief, start, end, material, -1)
+            _draw_line(
                 materials,
                 relief,
                 (start[0], columns - 2 - start[1]),
                 (end[0], columns - 2 - end[1]),
-                None,
+                material,
                 -1,
             )
 

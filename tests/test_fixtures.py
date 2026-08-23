@@ -36,7 +36,7 @@ class CharacterFixtureTests(unittest.TestCase):
             )
         )
         self.assertTrue(any(value > 0 for row in head.relief for value in row))
-        self.assertNotIn(2, {value for row in torso.materials for value in row})
+        self.assertIn(2, {value for row in torso.materials for value in row})
         self.assertTrue(all(value == 1 for row in thigh.materials for value in row))
 
     def test_spider_man_eyes_are_tapered_mirrored_voxel_masks(self) -> None:
@@ -96,6 +96,14 @@ class CharacterFixtureTests(unittest.TestCase):
         for appearance in plan.parts:
             if appearance.part_name == "head":
                 continue
+            if appearance.part_name == "torso":
+                black_faces = {
+                    surface.face.value
+                    for surface in appearance.surfaces
+                    if any(2 in row for row in surface.materials)
+                }
+                self.assertEqual(black_faces, {"front"})
+                continue
             self.assertNotIn(
                 2,
                 {
@@ -106,14 +114,14 @@ class CharacterFixtureTests(unittest.TestCase):
                 },
             )
 
-    def test_spider_man_chest_has_symmetric_uncolored_engraved_emblem(self) -> None:
+    def test_spider_man_chest_has_symmetric_black_engraved_emblem(self) -> None:
         torso = _surface_for(spider_man_plan(), "torso", "front")
         width = len(torso.materials[0])
         engraved = {
             (row, column)
             for row, values in enumerate(torso.materials)
-            for column, _material in enumerate(values)
-            if 17 <= row <= 34 and torso.relief[row][column] < 0
+            for column, material in enumerate(values)
+            if material == 2 and torso.relief[row][column] < 0
         }
         left = {(row, column) for row, column in engraved if column < width // 2}
         right = {(row, column) for row, column in engraved if column >= width // 2}
@@ -121,7 +129,11 @@ class CharacterFixtureTests(unittest.TestCase):
         self.assertGreater(len(engraved), 50)
         self.assertGreaterEqual(len({row for row, _ in engraved}), 16)
         self.assertEqual(right, {(row, width - 1 - column) for row, column in left})
-        self.assertNotIn(2, {material for row in torso.materials for material in row})
+        row_widths = {
+            row: sum((row, column) in engraved for column in range(width))
+            for row in {row for row, _ in engraved}
+        }
+        self.assertGreater(max(row_widths.values()), min(row_widths.values()))
 
     def test_spider_man_has_red_webbed_boots_below_blue_legs(self) -> None:
         shin = _surface_for(spider_man_plan(), "left_shin", "front")
