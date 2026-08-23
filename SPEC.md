@@ -304,28 +304,32 @@ Dense detail grids are sufficient for the MVP: a 96 mm figure at 0.6 mm resoluti
 
 ## 9. CLI
 
-Normative command:
+Normative two-stage workflow:
 
 ```bash
-text2model generate \
+lalo design \
   --prompt "把照片里的人做成方块小人，保留黑框眼镜和蓝色夹克" \
   --image person.jpg \
-  --height 80 \
   --seed 42 \
-  --output ./result
+  --output ./design
+
+lalo compile-design ./design --height 80 --output ./result
+lalo validate ./result
 ```
 
 Additional commands:
 
 ```bash
-text2model validate ./result
-text2model providers
-text2model config check
+lalo providers
+lalo config check
 ```
 
 Behavior:
 
-- `--prompt` is required; other generation arguments have defaults.
+- `lalo design` requires `--prompt`; image and seed are optional.
+- The generated design sheet is inspectable before the offline compile stage.
+- `lalo compile-design` defaults to a 96 mm assembled height.
+- Output paths must not already exist.
 - The command exits nonzero on any failed mandatory validation.
 - No final STL ZIP is emitted on failure; diagnostics and safe intermediate metadata may be retained.
 - The effective seed, provider, model version, schema version, and generator version are recorded.
