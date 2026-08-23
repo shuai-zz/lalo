@@ -6,6 +6,7 @@ import json
 import math
 import os
 import struct
+from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -153,7 +154,7 @@ def _build_document(
                     {
                         "attributes": {"POSITION": position_accessor},
                         "indices": index_accessor,
-                        "material": 0,
+                        "material": _dominant_part_material(plan, part.name),
                         "mode": 4,
                     }
                 ],
@@ -269,6 +270,28 @@ def _append_material_overlays(
             }
         )
         root_children.append(node_index)
+
+
+def _dominant_part_material(
+    plan: CharacterPlan | None, part_name: str
+) -> int:
+    if plan is None:
+        return 0
+    appearance = next(
+        (part for part in plan.parts if part.part_name == part_name), None
+    )
+    if appearance is None:
+        return 0
+    counts: Counter[int] = Counter(
+        material
+        for surface in appearance.surfaces
+        for row in surface.materials
+        for material in row
+    )
+    counts.update(feature.material_id for feature in appearance.silhouette_features)
+    if not counts:
+        return 0
+    return min(counts, key=lambda material: (-counts[material], material))
 
 
 def _patch_vertices(

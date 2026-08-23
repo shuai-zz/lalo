@@ -15,6 +15,7 @@ from lalo.appearance import (
     SurfaceMap,
 )
 from lalo.body import CANONICAL_PARTS
+from lalo.fixtures import spider_man_plan
 from lalo.glb import write_canonical_glb
 
 
@@ -94,6 +95,8 @@ class CanonicalGlbTests(unittest.TestCase):
 
             self.assertEqual([item["name"] for item in document["materials"]], ["red", "blue", "black", "white"])
             overlay = next(mesh for mesh in document["meshes"] if mesh["name"] == "head_materials")
+            base = next(mesh for mesh in document["meshes"] if mesh["name"] == "head")
+            self.assertEqual(base["primitives"][0]["material"], 0)
             self.assertEqual(
                 [primitive["material"] for primitive in overlay["primitives"]],
                 [0, 1, 2, 3],
@@ -115,6 +118,20 @@ class CanonicalGlbTests(unittest.TestCase):
             first_position = struct.unpack_from("<3f", binary, view["byteOffset"])
 
             self.assertLess(first_position[1], -0.5)
+
+    def test_unmapped_faces_use_each_parts_dominant_material(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document, _ = _parse_glb(
+                write_canonical_glb(
+                    directory, plan=spider_man_plan()
+                ).read_bytes()
+            )
+            meshes = {mesh["name"]: mesh for mesh in document["meshes"]}
+
+            self.assertEqual(meshes["head"]["primitives"][0]["material"], 0)
+            self.assertEqual(meshes["torso"]["primitives"][0]["material"], 1)
+            self.assertEqual(meshes["left_thigh"]["primitives"][0]["material"], 1)
+            self.assertEqual(meshes["right_foot"]["primitives"][0]["material"], 1)
 
     def test_material_output_is_deterministic(self) -> None:
         plan = _material_plan()
