@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -10,7 +11,14 @@ from unittest.mock import patch
 
 from test_design import _FakeDesigner
 from test_design_artifacts import _png_result
+from test_design_materials import _identity, _sheet
 
+from lalo import (
+    DesignerCapabilities,
+    DesignRequest,
+    DesignResult,
+    write_design_artifacts,
+)
 from lalo.cli import main
 
 
@@ -99,6 +107,43 @@ class DesignCLITests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(designer.requests[0].image.data, b"private-image")
         self.assertEqual(designer.requests[0].image.media_type, "image/png")
+
+    def test_compile_design_is_offline_and_writes_valid_stls(self) -> None:
+        result = DesignResult(
+            _identity(),
+            _sheet(),
+            3,
+            "test",
+            "fake",
+            "1",
+        )
+        with tempfile.TemporaryDirectory() as parent:
+            design = Path(parent) / "design"
+            output = Path(parent) / "printable"
+            write_design_artifacts(
+                design,
+                DesignRequest("not retained"),
+                result,
+                DesignerCapabilities(True, True, False, False),
+            )
+
+            with redirect_stdout(StringIO()):
+                status = main(
+                    [
+                        "compile-design",
+                        str(design),
+                        "--height",
+                        "80",
+                        "--output",
+                        str(output),
+                    ]
+                )
+
+            self.assertEqual(status, 0)
+            self.assertEqual(len(tuple((output / "stl").glob("*.stl"))), 14)
+            self.assertTrue((output / "preview.glb").is_file())
+            manifest = json.loads((output / "manifest.json").read_text())
+            self.assertEqual(manifest["height_mm"], 80.0)
 
 
 if __name__ == "__main__":

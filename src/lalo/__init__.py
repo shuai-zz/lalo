@@ -35,7 +35,11 @@ from lalo.designing import (
     UnsupportedDesignerError,
     design_character,
 )
-from lalo.design_artifacts import write_design_artifacts
+from lalo.design_artifacts import (
+    DesignPackage,
+    load_design_artifacts,
+    write_design_artifacts,
+)
 from lalo.design_crops import DesignPartCrop, DesignPartCrops, crop_design_parts
 from lalo.design_materials import sample_design_materials
 from lalo.generate import write_canonical_manifest, write_canonical_stls
@@ -111,6 +115,7 @@ __all__ = [
     "DesignRaster",
     "DesignPartCrop",
     "DesignPartCrops",
+    "DesignPackage",
     "DesignRequest",
     "DesignResult",
     "DesignSubjectError",
@@ -170,6 +175,7 @@ __all__ = [
     "generate_m1_artifacts",
     "generate_m2_artifacts",
     "iron_man_plan",
+    "load_design_artifacts",
     "mesh_occupancy",
     "mesh_part",
     "openai_planner_schema",

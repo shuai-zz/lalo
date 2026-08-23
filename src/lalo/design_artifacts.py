@@ -7,11 +7,53 @@ import io
 import json
 import os
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from PIL import Image
 
-from lalo.design import DesignerCapabilities, DesignRequest, DesignResult
+from lalo.appearance import PaletteEntry
+from lalo.design import (
+    CharacterRegion,
+    CharacterSheet,
+    DesignerCapabilities,
+    DesignRaster,
+    DesignRequest,
+    DesignResult,
+    DesignView,
+    DesignViewName,
+    FeatureImportance,
+    IdentityFeature,
+    IdentitySpec,
+)
+
+
+@dataclass(frozen=True)
+class DesignPackage:
+    """A provider-independent saved identity and canonical view set."""
+
+    identity: IdentitySpec
+    sheet: CharacterSheet
+
+
+def load_design_artifacts(directory: str | os.PathLike[str]) -> DesignPackage:
+    """Strictly load the provider-independent files written by this module."""
+
+    root = Path(directory)
+    identity = _identity_from_json((root / "identity.json").read_text("utf-8"))
+    views: list[DesignView] = []
+    for name in DesignViewName:
+        data = (root / f"{name.value}.png").read_bytes()
+        try:
+            with Image.open(io.BytesIO(data)) as image:
+                if image.format != "PNG":
+                    raise ValueError(f"{name.value} view must be PNG")
+                image.load()
+                width, height = image.size
+        except OSError as exc:
+            raise ValueError(f"{name.value} view is not a readable PNG") from exc
+        views.append(DesignView(name, DesignRaster(data, "image/png", width, height)))
+    return DesignPackage(identity, CharacterSheet(tuple(views)))
 
 
 def write_design_artifacts(
@@ -65,6 +107,63 @@ def _identity_json(result: DesignResult) -> str:
         ],
     }
     return json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def _identity_from_json(payload: str) -> IdentitySpec:
+    try:
+        document = json.loads(payload, object_pairs_hook=_unique_object)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid identity JSON: {exc}") from exc
+    root = _exact_object(
+        document,
+        {"schema_version", "name", "summary", "palette", "features"},
+        "identity",
+    )
+    try:
+        palette = tuple(
+            PaletteEntry(**_exact_object(item, {"id", "name", "srgb"}, "palette item"))
+            for item in root["palette"]
+        )
+        features = tuple(
+            IdentityFeature(
+                name=item["name"],
+                region=CharacterRegion(item["region"]),
+                description=item["description"],
+                importance=FeatureImportance(item["importance"]),
+            )
+            for raw in root["features"]
+            for item in (
+                _exact_object(
+                    raw,
+                    {"name", "region", "description", "importance"},
+                    "feature item",
+                ),
+            )
+        )
+        return IdentitySpec(
+            root["schema_version"],
+            root["name"],
+            root["summary"],
+            palette,
+            features,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"invalid identity: {exc}") from exc
+
+
+def _exact_object(value: object, keys: set[str], name: str) -> dict:
+    if not isinstance(value, dict) or set(value) != keys:
+        raise ValueError(f"{name} has invalid fields")
+    return value
+
+
+def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate identity field: {key}")
+        result[key] = value
+    return result
 
 
 def _metadata_json(
