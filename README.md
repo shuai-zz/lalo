@@ -2,169 +2,183 @@
 
 > Turn anyone into a printable block figure.
 
-Lalo is an open-source tool that turns a short text prompt and an optional reference photo into a set of 3D-printable, Minecraft-style humanoid parts.
+Lalo turns a Chinese or English description—and optionally one reference
+photo—into Minecraft-style humanoid body parts for FDM printing. It uses a
+multimodal model to create an inspectable four-view design sheet, then compiles
+that sheet locally into voxel shape, color regions, raised details, and engraved
+grooves. Blender is not required.
 
-Describe a character such as Spider-Man, Iron Man, or upload a photo of yourself. Lalo extracts the recognizable details—hair, glasses, clothing, colors, masks, and patterns—then builds them as printable voxel geometry and surface relief.
+The current release produces 14 separate STL files, a colored GLB preview, the
+retained material grid, validation metadata, and a deterministic ZIP. Joint
+geometry and 3MF are intentionally not included yet.
 
-The M2 implementation can now turn a text prompt and optional in-memory image
-into a locally validated `CharacterPlan`, then generate printable relief
-geometry and a four-color preview. The planner is replaceable; the first
-adapter uses OpenAI's Responses API, and Spider-Man and Iron Man remain
-available as deterministic offline geometry fixtures.
+## Install
+
+Lalo requires Python 3.11 or newer and currently targets macOS and Linux.
 
 ```bash
+git clone https://github.com/shuai-zz/lalo.git
+cd lalo
+python3 -m venv .venv
+. .venv/bin/activate
 python -m pip install -e .
-python - <<'PY'
-import os
-
-from lalo import (
-    OpenAIHTTPTransport,
-    OpenAIPlanner,
-    PlanRequest,
-    generate_m2_artifacts,
-)
-
-planner = OpenAIPlanner(
-    model=os.environ["LALO_OPENAI_MODEL"],
-    transport=OpenAIHTTPTransport(os.environ["OPENAI_API_KEY"]),
-)
-generate_m2_artifacts(
-    PlanRequest("生成一个蜘蛛侠风格的方块小人", seed=42),
-    planner,
-    "result",
-)
-PY
 ```
 
-The command produces:
+Check the available provider and local configuration without making a network
+request:
+
+```bash
+lalo providers
+lalo config check
+```
+
+## Configure the design provider
+
+The included provider uses OpenAI's Responses and image-generation APIs:
+
+```bash
+export OPENAI_API_KEY="..."
+export LALO_OPENAI_VISION_MODEL="gpt-5.4"       # optional default
+export LALO_OPENAI_IMAGE_MODEL="gpt-image-2"   # optional default
+```
+
+`OPENAI_BASE_URL` may point to an OpenAI-compatible service, but the service
+must implement both the structured Responses request and image-generation
+request used by Lalo. A chat/vision-only endpoint is not sufficient for the
+complete design stage.
+
+`LALO_OPENAI_ZERO_RETENTION=1` is required for photo input. This is a local
+declaration, not a provider setting: enable it only after confirming that the
+configured provider account and endpoint actually meet your retention needs.
+Lalo also sends `store: false`.
+
+## Generate a figure
+
+Generation is deliberately split into two inspectable stages.
+
+First create the design package:
+
+```bash
+lalo design \
+  --prompt "一个红蓝配色、胸前有蜘蛛标志的方块英雄" \
+  --seed 42 \
+  --output ./design
+```
+
+For a personal figure, add a single-person JPEG, PNG, or WebP photo:
+
+```bash
+LALO_OPENAI_ZERO_RETENTION=1 lalo design \
+  --prompt "保留黑框眼镜和蓝色夹克，做成方块小人" \
+  --image ./person.jpg \
+  --seed 42 \
+  --output ./design
+```
+
+Inspect `design/sheet.png` and the four orthographic views, then compile them
+locally. The default assembled height is 96 mm:
+
+```bash
+lalo compile-design ./design --height 96 --output ./result
+lalo validate ./result
+```
+
+Each output path must not already exist. This prevents accidental overwrite of
+designs or printable files.
+
+## Outputs
+
+The design stage writes no source photo:
+
+```text
+design/
+  identity.json          # bounded identity features
+  sheet.png              # four-view source sheet
+  front.png
+  right.png
+  back.png
+  left.png
+  design-metadata.json   # redacted reproducibility metadata
+```
+
+The offline compiler writes:
 
 ```text
 result/
-  stl/                    # 14 separate binary STL parts
-  character_plan.json     # cleaned and protected relief plan
-  provider_character_plan.json # original locally validated provider plan
+  stl/                    # 14 part-local binary STL files
+  character_plan.json     # final protected material/relief plan
   material_grid.json.gz   # retained four-color surface assignments
-  manifest.json           # actual bounds, transforms, and file hashes
-  planning_metadata.json  # redacted provider and reproducibility metadata
-  preview.glb             # detailed, assembled, colored preview
-  validation_report.json  # cleanup and topology results
+  manifest.json           # dimensions, assembly transforms, sizes, hashes
+  preview.glb             # assembled colored preview
+  validation_report.json  # topology and printability results
+  result.zip              # deterministic archive of all files above
 ```
 
-For an image request, pass in-memory JPEG, PNG, or WebP bytes:
+`lalo validate` independently checks the plan, compressed material grid, GLB
+header, all 14 manifest entries and STL hashes, topology report, safe relative
+paths, and exact ZIP contents. It returns a nonzero status with stable error
+codes if anything is missing or modified.
 
-```python
-from pathlib import Path
-
-import os
-
-from lalo import (
-    ImageInput,
-    OpenAIHTTPTransport,
-    OpenAIPlanner,
-    PlanRequest,
-    generate_m2_artifacts,
-)
-
-# Set zero_retention=True only after confirming ZDR for this OpenAI project.
-image_planner = OpenAIPlanner(
-    model=os.environ["LALO_OPENAI_MODEL"],
-    transport=OpenAIHTTPTransport(os.environ["OPENAI_API_KEY"]),
-    zero_retention=True,
-)
-
-request = PlanRequest(
-    "保留黑框眼镜，但把照片里的衣服改成红色夹克",
-    image=ImageInput(Path("person.jpg").read_bytes(), "image/jpeg"),
-    seed=42,
-)
-generate_m2_artifacts(request, image_planner, "result")
-```
-
-Image generation requires `OpenAIPlanner(..., zero_retention=True)`, but that
-flag is only a declaration checked by Lalo. It does not enable Zero Data
-Retention at OpenAI. Set it only after the deployer has independently confirmed
-that the configured organization and endpoint have the required retention
-controls. Every adapter request sets `store: false` regardless.
-
-For fully offline geometry testing, use `generate_m1_artifacts()` with
-`spider_man_plan()` or `iron_man_plan()`. The M0 untextured generator remains
-available as `generate_m0_artifacts()`.
-
-## What Lalo will generate
-
-- 14 separate STL body parts for an articulated humanoid figure
-- Minecraft-like proportions at a default assembled height of 96 mm
-- Pixelated raised and engraved surface details
-- A colored GLB assembly preview
-- A manifest containing assembly transforms and material information
-- Geometry validated for entry-level FDM printing with a 0.4 mm nozzle
-
-The first release generates body parts without joint sockets. A reusable joint library and robust boolean insertion will be added separately. STL is the initial print format; multicolor 3MF/AMS export is planned.
-
-## How it works
+## Geometry pipeline
 
 ```text
-text + optional image
+text + optional photo
+        ↓ external provider
+identity spec + orthographic design sheet
+        ↓ local CPU pipeline
+part crops → four-color sampling → relief inference
         ↓
-multimodal model → constrained CharacterPlan
+voxel head visual hull + protected raised/engraved surface geometry
         ↓
-printability cleanup and protected-surface checks
-        ↓
-deterministic voxel geometry compiler
-        ↓
-validated STL parts + colored GLB preview
+14 watertight STL parts + GLB + manifest + ZIP
 ```
 
-The AI model describes bounded surface maps and character features—it does not generate arbitrary mesh code. A deterministic local geometry engine turns that plan into axis-aligned voxel meshes. This keeps the output reproducible, inspectable, and printable.
+The model creates design images and constrained identity data; it does not write
+mesh code. Deterministic local code samples the design and generates the actual
+geometry. The head uses a multi-view voxel visual hull, so its profile, back of
+the head, and identified features such as glasses can have physical depth rather
+than being only a flat texture. Other body parts currently keep canonical block
+envelopes with voxel relief.
 
-Lalo is designed to support interchangeable multimodal providers. Geometry processing runs locally on CPU and does not require Blender.
+## Scope and limitations
 
-## MVP scope
+The current scope is one standard bipedal humanoid, one optional subject, at
+most four sampled colors, and basic 0.4 mm-nozzle/0.2 mm-layer FDM constraints.
+It supports short or medium block hair, glasses, masks, facial hair, clothing
+details, and mild armor.
 
-The MVP focuses on:
+Not yet included:
 
-- Chinese and English prompts
-- One optional image containing exactly one person or character
-- Standard bipedal humanoids
-- Short or medium block hair, glasses, masks, facial hair, clothing details, and mild armor
-- macOS and Linux
-- CLI-first, self-hosted usage
+- joint pegs, sockets, tolerance fitting, or boolean joint insertion;
+- 3MF/AMS export (STL is geometry-only; GLB is the color preview);
+- user editing, a web UI, Windows, Docker, non-humanoids, weapons, capes, or
+  long hanging hair;
+- guaranteed likeness or famous-character recognition from every generated
+  design sheet.
 
-Non-humanoids, capes, weapons, long hanging hair, user editing, joints, 3MF, Windows, Docker, and a web interface are outside the first milestone.
-
-## Project status
-
-M0 and M1 are complete. The M2 software path is implemented: provider protocol,
-strict JSON codec, bounded correction, single-subject rejection, OpenAI
-multimodal adapter, privacy helpers, reproducibility metadata, and end-to-end
-M1 artifact generation are covered by offline tests on macOS and Linux.
-
-M2 acceptance is not yet complete. It still requires four appropriately
-licensed personal photos, execution of all ten golden cases against a configured
-live provider, human recognizability scoring, and review of the resulting
-artifacts without manual mesh edits. Those assets are deliberately not stored
-in this repository yet. The remaining roadmap is:
-
-1. Complete the ten-case M2 acceptance run
-2. Build the CLI/ZIP workflow and perform owner physical print validation
-3. Add joint insertion and multicolor 3MF support
-
-See [SPEC.md](./SPEC.md) for the complete product and technical specification.
+Automated geometry and package validation passes on macOS and Linux. Physical
+printing remains an owner-run acceptance step: Spider-Man, Iron Man, and one
+photo-based figure still need to be sliced and printed with the target FDM
+profile before the MVP can claim physical validation.
 
 ## Privacy
 
-Lalo is intended for open-source, self-hosted use. The core planner accepts
-images in memory and never includes prompt text, image bytes, Base64 content,
-credentials, or raw provider responses in its planning metadata. A helper for
-adapters that require a temporary image file removes its private copy on normal
-and exceptional exits; it never deletes the user's original photo. When an
-external AI provider is configured, that provider's data-retention policy still
-applies.
+Lalo reads a source photo into memory and does not copy it into either output
+package. Prompt text, image bytes, Base64 payloads, credentials, and raw provider
+responses are excluded from saved metadata. External-provider retention and
+logging policies still apply, so self-hosters must assess their configured
+provider separately.
 
-## Contributing
+## Development
 
-The project is at an early stage. Design discussions, printable test cases, geometry experiments, and provider adapters are welcome.
+Run the offline test suite with:
 
-## License
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -v
+```
 
-The license has not been selected yet.
+All feature changes are delivered through a focused GitHub issue and pull
+request. See [AGENTS.md](./AGENTS.md) for repository workflow rules and
+[SPEC.md](./SPEC.md) for the product and technical specification.
+
+The project does not have a selected license yet.
