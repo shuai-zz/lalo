@@ -17,6 +17,23 @@ class PartSpec:
     origin_xyz: tuple[int, int, int]
 
 
+DEFAULT_LEG_GAP_MM = 0.8
+
+
+def assembly_translation_mm(
+    part: PartSpec,
+    master_scale_mm: float,
+    *,
+    leg_gap_mm: float = DEFAULT_LEG_GAP_MM,
+) -> tuple[float, float, float]:
+    """Return a neutral assembly translation with symmetric leg separation."""
+
+    x, y, z = (value * master_scale_mm for value in part.origin_xyz)
+    if any(token in part.name for token in ("thigh", "shin", "foot")):
+        x += leg_gap_mm / 2 if part.name.startswith("left_") else -leg_gap_mm / 2
+    return x, y, z
+
+
 def mesh_part(part: PartSpec) -> Mesh:
     """Compile a body part into a solid mesh at its local origin."""
 

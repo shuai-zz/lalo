@@ -68,6 +68,10 @@ class CanonicalGlbTests(unittest.TestCase):
             )
             self.assertEqual(assembled_top_z, 96.0)
 
+            nodes = {node["name"]: node for node in document["nodes"][1:]}
+            self.assertEqual(nodes["left_thigh"]["translation"][0], 0.4)
+            self.assertEqual(nodes["right_thigh"]["translation"][0], -12.4)
+
     def test_output_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

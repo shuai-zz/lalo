@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from collections import Counter
 
-from lalo.body import CANONICAL_PARTS, PartSpec, mesh_part
+from lalo.body import CANONICAL_PARTS, PartSpec, assembly_translation_mm, mesh_part
 from lalo.meshing import Mesh
 
 
@@ -100,6 +100,18 @@ class CanonicalBodyTests(unittest.TestCase):
         moved = PartSpec("example", (2, 3, 4), (100, -20, 8))
 
         self.assertEqual(mesh_part(first), mesh_part(moved))
+
+    def test_neutral_assembly_separates_legs_symmetrically(self) -> None:
+        parts = _by_name()
+        right = assembly_translation_mm(parts["right_thigh"], 3.0)
+        left = assembly_translation_mm(parts["left_thigh"], 3.0)
+
+        right_max_x = right[0] + parts["right_thigh"].size_xyz[0] * 3.0
+        left_min_x = left[0]
+        self.assertAlmostEqual(left_min_x - right_max_x, 0.8)
+        self.assertAlmostEqual(right[0], -12.4)
+        self.assertAlmostEqual(left[0], 0.4)
+        self.assertEqual(assembly_translation_mm(parts["head"], 3.0), (-12.0, -12.0, 72.0))
 
 
 def _by_name() -> dict[str, PartSpec]:
