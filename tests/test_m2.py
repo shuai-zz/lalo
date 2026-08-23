@@ -68,6 +68,7 @@ class M2ArtifactTests(unittest.TestCase):
                     "preview.glb",
                     "validation_report.json",
                     "planning_metadata.json",
+                    "result.zip",
                 },
             )
 

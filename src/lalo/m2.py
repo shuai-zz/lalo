@@ -11,6 +11,7 @@ from pathlib import Path
 
 from lalo.generate import DEFAULT_HEIGHT_MM
 from lalo.m1 import M1Artifacts, generate_m1_artifacts
+from lalo.packaging import write_artifact_zip
 from lalo.plan_json import character_plan_to_json
 from lalo.planner import CharacterPlanner, PlanRequest
 from lalo.planning import plan_character
@@ -70,6 +71,7 @@ def generate_m2_artifacts(
         json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    write_artifact_zip(output)
     return M2Artifacts(
         m1=artifacts,
         provider_plan_path=provider_plan_path,

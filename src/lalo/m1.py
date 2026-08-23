@@ -17,6 +17,7 @@ from lalo.body import CANONICAL_PARTS, PartSpec, assembly_translation_mm
 from lalo.generate import DEFAULT_HEIGHT_MM, MASTER_HEIGHT_VOXELS
 from lalo.glb import write_canonical_glb
 from lalo.meshing import Mesh
+from lalo.packaging import write_artifact_zip
 from lalo.printability import clean_relief_for_fdm
 from lalo.protection import canonical_protection_masks, clip_protected_relief
 from lalo.relief import (
@@ -40,6 +41,7 @@ class M1Artifacts:
     character_plan_path: Path
     material_grid_path: Path
     validation_report_path: Path
+    package_path: Path
 
 
 @dataclass(frozen=True)
@@ -97,6 +99,7 @@ def generate_m1_artifacts(
         geometry_scale_mm=detail_pitch,
     )
     validation_report_path = _write_validation_report(output, builds, height)
+    package_path = write_artifact_zip(output)
     return M1Artifacts(
         stl_paths=stl_paths,
         manifest_path=manifest_path,
@@ -104,6 +107,7 @@ def generate_m1_artifacts(
         character_plan_path=character_plan_path,
         material_grid_path=material_grid_path,
         validation_report_path=validation_report_path,
+        package_path=package_path,
     )
 
 
