@@ -42,6 +42,7 @@ from lalo.design_artifacts import (
 )
 from lalo.design_crops import DesignPartCrop, DesignPartCrops, crop_design_parts
 from lalo.design_materials import sample_design_materials
+from lalo.design_relief import infer_design_relief
 from lalo.design_shape import compile_head_visual_hull
 from lalo.generate import write_canonical_manifest, write_canonical_stls
 from lalo.fixtures import iron_man_plan, spider_man_plan
@@ -94,6 +95,7 @@ from lalo.privacy import (
 from lalo.relief import (
     DETAIL_CELLS_PER_MASTER,
     DetailedPart,
+    apply_relief_to_shape,
     compile_part_relief,
     mesh_detailed_part,
 )
@@ -161,6 +163,7 @@ __all__ = [
     "ValidationIssue",
     "binary_stl_bytes",
     "assembly_translation_mm",
+    "apply_relief_to_shape",
     "character_plan_from_dict",
     "character_plan_from_json",
     "character_plan_from_skin_atlas",
@@ -176,6 +179,7 @@ __all__ = [
     "generate_m0_artifacts",
     "generate_m1_artifacts",
     "generate_m2_artifacts",
+    "infer_design_relief",
     "iron_man_plan",
     "load_design_artifacts",
     "mesh_occupancy",

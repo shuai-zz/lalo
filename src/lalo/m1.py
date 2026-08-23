@@ -9,11 +9,11 @@ import json
 import math
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from lalo.appearance import CharacterPlan, PartAppearance, SurfaceMap
-from lalo.body import CANONICAL_PARTS, assembly_translation_mm
+from lalo.body import CANONICAL_PARTS, PartSpec, assembly_translation_mm
 from lalo.generate import DEFAULT_HEIGHT_MM, MASTER_HEIGHT_VOXELS
 from lalo.glb import write_canonical_glb
 from lalo.meshing import Mesh
@@ -22,6 +22,7 @@ from lalo.protection import canonical_protection_masks, clip_protected_relief
 from lalo.relief import (
     DETAIL_CELLS_PER_MASTER,
     DetailedPart,
+    apply_relief_to_shape,
     compile_part_relief,
     mesh_detailed_part,
 )
@@ -49,6 +50,7 @@ class _PartBuild:
     expanded_pixels: int
     adjusted_depth_pixels: int
     clipped_pixels: int
+    dropped_unsafe_relief_pixels: int
 
 
 def generate_m1_artifacts(
@@ -131,25 +133,9 @@ def _compile_plan(
             protection.surfaces,
             appearance.silhouette_features,
         )
-        detailed = part_shapes.get(spec.name)
-        if detailed is not None:
-            if (
-                any(
-                    level != 0
-                    for surface in processed.surfaces
-                    for row in surface.relief
-                    for level in row
-                )
-                or processed.silhouette_features
-            ):
-                raise ValueError(
-                    f"custom shape {spec.name} cannot yet combine with relief or "
-                    "silhouette features"
-                )
-        else:
-            detailed = compile_part_relief(
-                spec, processed.surfaces, processed.silhouette_features
-            )
+        processed, detailed, dropped = _compile_safe_detail(
+            spec, processed, part_shapes.get(spec.name)
+        )
         mesh = mesh_detailed_part(detailed)
         processed_parts.append(processed)
         builds.append(
@@ -160,6 +146,7 @@ def _compile_plan(
                 expanded,
                 adjusted,
                 protection.clipped_pixel_count,
+                dropped,
             )
         )
     return (
@@ -171,6 +158,110 @@ def _compile_plan(
         ),
         tuple(builds),
     )
+
+
+def _compile_safe_detail(
+    spec: PartSpec,
+    appearance: PartAppearance,
+    base_shape: DetailedPart | None,
+) -> tuple[PartAppearance, DetailedPart, int]:
+    full = _compile_detail(spec, appearance, base_shape)
+    if validate_mesh(mesh_detailed_part(full)).valid:
+        return appearance, full, 0
+    components = _relief_components(appearance.surfaces)
+    if not components:
+        return appearance, full, 0
+    accepted = [
+        [[0 for _ in row] for row in surface.relief] for surface in appearance.surfaces
+    ]
+    current = replace(
+        appearance,
+        surfaces=tuple(
+            SurfaceMap(
+                surface.face,
+                tuple(tuple(0 for _ in row) for row in surface.relief),
+                surface.materials,
+            )
+            for surface in appearance.surfaces
+        ),
+    )
+    detailed = _compile_detail(spec, current, base_shape)
+    dropped = 0
+    for surface_index, cells in components:
+        surface = appearance.surfaces[surface_index]
+        for row, column in cells:
+            accepted[surface_index][row][column] = surface.relief[row][column]
+        candidate = replace(
+            appearance,
+            surfaces=tuple(
+                SurfaceMap(
+                    source.face,
+                    tuple(tuple(value for value in row) for row in accepted[index]),
+                    source.materials,
+                )
+                for index, source in enumerate(appearance.surfaces)
+            ),
+        )
+        candidate_detail = _compile_detail(spec, candidate, base_shape)
+        if validate_mesh(mesh_detailed_part(candidate_detail)).valid:
+            current, detailed = candidate, candidate_detail
+        else:
+            for row, column in cells:
+                accepted[surface_index][row][column] = 0
+            dropped += len(cells)
+    return current, detailed, dropped
+
+
+def _compile_detail(
+    spec: PartSpec,
+    appearance: PartAppearance,
+    base_shape: DetailedPart | None,
+) -> DetailedPart:
+    if base_shape is None:
+        return compile_part_relief(
+            spec, appearance.surfaces, appearance.silhouette_features
+        )
+    if appearance.silhouette_features:
+        raise ValueError(
+            f"custom shape {spec.name} cannot combine with silhouette features"
+        )
+    return apply_relief_to_shape(spec, base_shape, appearance.surfaces)
+
+
+def _relief_components(
+    surfaces: tuple[SurfaceMap, ...],
+) -> list[tuple[int, tuple[tuple[int, int], ...]]]:
+    result: list[tuple[int, tuple[tuple[int, int], ...]]] = []
+    for surface_index, surface in enumerate(surfaces):
+        remaining = {
+            (row, column)
+            for row, values in enumerate(surface.relief)
+            for column, level in enumerate(values)
+            if level != 0
+        }
+        while remaining:
+            start = min(remaining)
+            level = surface.relief[start[0]][start[1]]
+            stack = [start]
+            remaining.remove(start)
+            component: list[tuple[int, int]] = []
+            while stack:
+                row, column = stack.pop()
+                component.append((row, column))
+                for neighbor in (
+                    (row - 1, column),
+                    (row + 1, column),
+                    (row, column - 1),
+                    (row, column + 1),
+                ):
+                    if (
+                        neighbor in remaining
+                        and surface.relief[neighbor[0]][neighbor[1]] == level
+                    ):
+                        remaining.remove(neighbor)
+                        stack.append(neighbor)
+            result.append((surface_index, tuple(sorted(component))))
+    return result
 
 
 def _write_part_stl(directory: Path, build: _PartBuild, pitch: float) -> Path:
@@ -253,6 +344,9 @@ def _write_validation_report(
                     "expanded_relief_pixels": build.expanded_pixels,
                     "adjusted_depth_pixels": build.adjusted_depth_pixels,
                     "clipped_protected_pixels": build.clipped_pixels,
+                    "dropped_unsafe_relief_pixels": (
+                        build.dropped_unsafe_relief_pixels
+                    ),
                     "issues": [
                         {"code": issue.code, "message": issue.message}
                         for issue in build.validation.issues
