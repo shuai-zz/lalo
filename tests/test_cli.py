@@ -144,6 +144,9 @@ class DesignCLITests(unittest.TestCase):
             self.assertTrue((output / "preview.glb").is_file())
             manifest = json.loads((output / "manifest.json").read_text())
             self.assertEqual(manifest["height_mm"], 80.0)
+            report = json.loads((output / "validation_report.json").read_text())
+            head = next(part for part in report["parts"] if part["name"] == "head")
+            self.assertLess(head["signed_volume_detail_cells"], 40**3)
 
 
 if __name__ == "__main__":

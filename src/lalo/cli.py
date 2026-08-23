@@ -12,6 +12,7 @@ from lalo.design import CharacterDesigner, DesignRequest
 from lalo.design_artifacts import load_design_artifacts, write_design_artifacts
 from lalo.design_crops import crop_design_parts
 from lalo.design_materials import sample_design_materials
+from lalo.design_shape import compile_head_visual_hull
 from lalo.designing import design_character
 from lalo.m1 import generate_m1_artifacts
 from lalo.openai_designer import OpenAIDesigner
@@ -79,7 +80,13 @@ def _run_compile_design(arguments: argparse.Namespace, output: Path) -> None:
     package = load_design_artifacts(arguments.design_directory)
     crops = crop_design_parts(package.sheet)
     plan = sample_design_materials(package.identity, crops)
-    generate_m1_artifacts(plan, output, height_mm=arguments.height)
+    head_shape = compile_head_visual_hull(crops)
+    generate_m1_artifacts(
+        plan,
+        output,
+        height_mm=arguments.height,
+        part_shapes={"head": head_shape},
+    )
 
 
 def _read_image(path: Path | None) -> ImageInput | None:

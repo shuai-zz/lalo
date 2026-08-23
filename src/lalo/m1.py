@@ -8,6 +8,7 @@ import io
 import json
 import math
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from lalo.printability import clean_relief_for_fdm
 from lalo.protection import canonical_protection_masks, clip_protected_relief
 from lalo.relief import (
     DETAIL_CELLS_PER_MASTER,
+    DetailedPart,
     compile_part_relief,
     mesh_detailed_part,
 )
@@ -54,13 +56,18 @@ def generate_m1_artifacts(
     output_directory: str | os.PathLike[str],
     *,
     height_mm: float = DEFAULT_HEIGHT_MM,
+    part_shapes: Mapping[str, DetailedPart] | None = None,
 ) -> M1Artifacts:
     """Generate a complete validated M1 artifact directory from ``plan``."""
 
     height = _validate_height(height_mm)
     output = Path(output_directory)
     _require_empty_output(output)
-    processed_plan, builds = _compile_plan(plan, height)
+    shapes = dict(part_shapes or {})
+    unknown_shapes = set(shapes) - {part.name for part in CANONICAL_PARTS}
+    if unknown_shapes:
+        raise ValueError(f"unknown custom part shapes: {sorted(unknown_shapes)}")
+    processed_plan, builds = _compile_plan(plan, height, shapes)
     failures = tuple(build.name for build in builds if not build.validation.valid)
     if failures:
         raise RuntimeError("M1 mesh validation failed for: " + ", ".join(failures))
@@ -99,7 +106,9 @@ def generate_m1_artifacts(
 
 
 def _compile_plan(
-    plan: CharacterPlan, height_mm: float
+    plan: CharacterPlan,
+    height_mm: float,
+    part_shapes: Mapping[str, DetailedPart],
 ) -> tuple[CharacterPlan, tuple[_PartBuild, ...]]:
     appearances = {part.part_name: part for part in plan.parts}
     processed_parts: list[PartAppearance] = []
@@ -122,9 +131,25 @@ def _compile_plan(
             protection.surfaces,
             appearance.silhouette_features,
         )
-        detailed = compile_part_relief(
-            spec, processed.surfaces, processed.silhouette_features
-        )
+        detailed = part_shapes.get(spec.name)
+        if detailed is not None:
+            if (
+                any(
+                    level != 0
+                    for surface in processed.surfaces
+                    for row in surface.relief
+                    for level in row
+                )
+                or processed.silhouette_features
+            ):
+                raise ValueError(
+                    f"custom shape {spec.name} cannot yet combine with relief or "
+                    "silhouette features"
+                )
+        else:
+            detailed = compile_part_relief(
+                spec, processed.surfaces, processed.silhouette_features
+            )
         mesh = mesh_detailed_part(detailed)
         processed_parts.append(processed)
         builds.append(
