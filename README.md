@@ -93,7 +93,7 @@ available as `generate_m0_artifacts()`.
 ## What Lalo will generate
 
 - 14 separate STL body parts for an articulated humanoid figure
-- Minecraft-like proportions at a default assembled height of 80 mm
+- Minecraft-like proportions at a default assembled height of 96 mm
 - Pixelated raised and engraved surface details
 - A colored GLB assembly preview
 - A manifest containing assembly transforms and material information
