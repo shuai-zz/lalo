@@ -37,6 +37,7 @@ from lalo.designing import (
 )
 from lalo.design_artifacts import write_design_artifacts
 from lalo.design_crops import DesignPartCrop, DesignPartCrops, crop_design_parts
+from lalo.design_materials import sample_design_materials
 from lalo.generate import write_canonical_manifest, write_canonical_stls
 from lalo.fixtures import iron_man_plan, spider_man_plan
 from lalo.glb import write_canonical_glb
@@ -178,6 +179,7 @@ __all__ = [
     "planning_metadata_json",
     "mesh_detailed_part",
     "solid_cuboid",
+    "sample_design_materials",
     "spider_man_plan",
     "transient_image_file",
     "validate_mesh",

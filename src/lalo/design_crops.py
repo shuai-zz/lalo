@@ -70,10 +70,12 @@ def crop_design_parts(
     crops: list[DesignPartCrop] = []
     for view in sheet.views:
         image = _decode_raster(view.image)
-        figure_box = _largest_foreground_box(image, background_tolerance)
+        figure_box, figure_alpha = _largest_foreground(image, background_tolerance)
+        masked = image.convert("RGBA")
+        masked.putalpha(figure_alpha)
         for part in CANONICAL_PARTS:
             source_box = _part_box(part, view.name, figure_box)
-            cropped = image.crop(source_box)
+            cropped = masked.crop(source_box)
             encoded = io.BytesIO()
             cropped.save(encoded, format="PNG")
             crops.append(
@@ -89,6 +91,8 @@ def crop_design_parts(
                     source_box,
                 )
             )
+            cropped.close()
+        masked.close()
         image.close()
     return DesignPartCrops(tuple(crops))
 
@@ -105,9 +109,9 @@ def _decode_raster(raster: DesignRaster) -> Image.Image:
     return image
 
 
-def _largest_foreground_box(
+def _largest_foreground(
     image: Image.Image, tolerance: int
-) -> tuple[int, int, int, int]:
+) -> tuple[tuple[int, int, int, int], Image.Image]:
     width, height = image.size
     if width < 8 or height < 32:
         raise ValueError("design view is too small for canonical part cropping")
@@ -125,16 +129,19 @@ def _largest_foreground_box(
                 foreground[offset + x] = 1
 
     best: tuple[int, int, int, int, int] | None = None
+    best_pixels: list[int] = []
     for start in range(width * height):
         if foreground[start] != 1:
             continue
         foreground[start] = 2
         queue = deque((start,))
+        component_pixels: list[int] = []
         count = 0
         min_x = max_x = start % width
         min_y = max_y = start // width
         while queue:
             index = queue.popleft()
+            component_pixels.append(index)
             x, y = index % width, index // width
             count += 1
             min_x, max_x = min(min_x, x), max(max_x, x)
@@ -148,12 +155,57 @@ def _largest_foreground_box(
         component = (count, min_x, min_y, max_x + 1, max_y + 1)
         if best is None or component[0] > best[0]:
             best = component
+            best_pixels = component_pixels
     if best is None:
         raise ValueError("design view has no foreground character")
     count, left, top, right, bottom = best
     if count < 32 or right - left < 4 or bottom - top < 16:
         raise ValueError("design view foreground character is too small")
-    return left, top, right, bottom
+    alpha = bytearray(width * height)
+    for index in best_pixels:
+        alpha[index] = 255
+    _fill_enclosed_holes(alpha, width, (left, top, right, bottom))
+    return (left, top, right, bottom), Image.frombytes(
+        "L", (width, height), bytes(alpha)
+    )
+
+
+def _fill_enclosed_holes(
+    alpha: bytearray,
+    width: int,
+    box: tuple[int, int, int, int],
+) -> None:
+    """Treat light regions enclosed by the figure outline as foreground."""
+
+    left, top, right, bottom = box
+    outside = bytearray(len(alpha))
+    queue: deque[int] = deque()
+    border_points = (
+        *((x, top) for x in range(left, right)),
+        *((x, bottom - 1) for x in range(left, right)),
+        *((left, y) for y in range(top, bottom)),
+        *((right - 1, y) for y in range(top, bottom)),
+    )
+    for x, y in border_points:
+        index = y * width + x
+        if alpha[index] == 0 and outside[index] == 0:
+            outside[index] = 1
+            queue.append(index)
+    while queue:
+        index = queue.popleft()
+        x, y = index % width, index // width
+        for next_x, next_y in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if not (left <= next_x < right and top <= next_y < bottom):
+                continue
+            neighbor = next_y * width + next_x
+            if alpha[neighbor] == 0 and outside[neighbor] == 0:
+                outside[neighbor] = 1
+                queue.append(neighbor)
+    for y in range(top, bottom):
+        for x in range(left, right):
+            index = y * width + x
+            if alpha[index] == 0 and outside[index] == 0:
+                alpha[index] = 255
 
 
 def _part_box(
