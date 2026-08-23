@@ -17,6 +17,7 @@ from lalo import (
     DesignRequest,
     DesignView,
     DesignViewName,
+    load_design_artifacts,
     write_design_artifacts,
 )
 
@@ -48,6 +49,11 @@ class DesignArtifactTests(unittest.TestCase):
             metadata = json.loads(metadata_text)
             self.assertEqual(metadata["design"]["effective_seed"], 7)
             self.assertEqual(metadata["input"]["has_image"], False)
+            loaded = load_design_artifacts(output)
+            self.assertEqual(loaded.identity, result.identity)
+            self.assertEqual(
+                tuple(view.name for view in loaded.sheet.views), tuple(DesignViewName)
+            )
 
     def test_refuses_to_replace_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as parent:
