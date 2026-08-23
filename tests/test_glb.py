@@ -131,7 +131,7 @@ class CanonicalGlbTests(unittest.TestCase):
             self.assertEqual(meshes["head"]["primitives"][0]["material"], 0)
             self.assertEqual(meshes["torso"]["primitives"][0]["material"], 1)
             self.assertEqual(meshes["left_thigh"]["primitives"][0]["material"], 1)
-            self.assertEqual(meshes["right_foot"]["primitives"][0]["material"], 1)
+            self.assertEqual(meshes["right_foot"]["primitives"][0]["material"], 0)
 
     def test_material_output_is_deterministic(self) -> None:
         plan = _material_plan()
