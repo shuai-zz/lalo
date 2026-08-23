@@ -76,6 +76,10 @@ def crop_design_parts(
         for part in CANONICAL_PARTS:
             source_box = _part_box(part, view.name, figure_box)
             cropped = masked.crop(source_box)
+            if view.name in (DesignViewName.BACK, DesignViewName.RIGHT):
+                mirrored = cropped.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+                cropped.close()
+                cropped = mirrored
             encoded = io.BytesIO()
             cropped.save(encoded, format="PNG")
             crops.append(
