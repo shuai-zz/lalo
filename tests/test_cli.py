@@ -35,6 +35,25 @@ class _PNGDesigner(_FakeDesigner):
 
 
 class DesignCLITests(unittest.TestCase):
+    def test_providers_reports_capabilities_without_secret(self) -> None:
+        stdout = StringIO()
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "top-secret"}, clear=True):
+            with redirect_stdout(stdout):
+                status = main(["providers"])
+
+        document = json.loads(stdout.getvalue())
+        self.assertEqual(status, 0)
+        self.assertTrue(document[0]["configured"])
+        self.assertNotIn("top-secret", stdout.getvalue())
+
+    def test_config_check_is_offline_and_actionable(self) -> None:
+        stderr = StringIO()
+        with patch.dict("os.environ", {}, clear=True), redirect_stderr(stderr):
+            status = main(["config", "check"])
+
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr.getvalue(), "missing:OPENAI_API_KEY\n")
+
     def test_validate_command_reports_machine_stable_errors(self) -> None:
         stderr = StringIO()
         with (

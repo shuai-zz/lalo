@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
 from typing import Sequence
 
 from lalo.artifact_validation import validate_artifact_directory
+from lalo.configuration import check_configuration, provider_statuses
 from lalo.design import CharacterDesigner, DesignRequest
 from lalo.design_artifacts import load_design_artifacts, write_design_artifacts
 from lalo.design_crops import crop_design_parts
@@ -37,6 +39,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if arguments.command == "validate":
         result = validate_artifact_directory(arguments.artifact_directory)
+        if result.valid:
+            print("valid")
+            return 0
+        for error in result.errors:
+            print(error, file=sys.stderr)
+        return 1
+    if arguments.command == "providers":
+        print(
+            json.dumps(
+                [status.__dict__ for status in provider_statuses()],
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+        )
+        return 0
+    if arguments.command == "config":
+        result = check_configuration()
         if result.valid:
             print("valid")
             return 0
@@ -76,6 +95,10 @@ def _parser() -> argparse.ArgumentParser:
         "validate", help="independently verify a printable artifact directory"
     )
     validate.add_argument("artifact_directory", type=Path)
+    commands.add_parser("providers", help="list supported provider capabilities")
+    config = commands.add_parser("config", help="inspect local provider configuration")
+    config_commands = config.add_subparsers(dest="config_command", required=True)
+    config_commands.add_parser("check", help="validate configuration without a network call")
     return parser
 
 

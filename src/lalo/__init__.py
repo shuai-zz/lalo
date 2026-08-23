@@ -19,6 +19,12 @@ from lalo.body import (
     assembly_translation_mm,
     mesh_part,
 )
+from lalo.configuration import (
+    ConfigurationCheck,
+    ProviderStatus,
+    check_configuration,
+    provider_statuses,
+)
 from lalo.design import (
     CharacterDesigner,
     CharacterRegion,
@@ -115,6 +121,7 @@ __all__ = [
     "CharacterPlan",
     "CharacterPlanCodecError",
     "CharacterPlanner",
+    "ConfigurationCheck",
     "CharacterDesigner",
     "CharacterRegion",
     "CharacterSheet",
@@ -155,6 +162,7 @@ __all__ = [
     "PartAppearance",
     "ProtectionMask",
     "ProtectionResult",
+    "ProviderStatus",
     "ResponsesTransport",
     "ImagesTransport",
     "DesignTransport",
@@ -170,6 +178,7 @@ __all__ = [
     "binary_stl_bytes",
     "assembly_translation_mm",
     "apply_relief_to_shape",
+    "check_configuration",
     "character_plan_from_dict",
     "character_plan_from_json",
     "character_plan_from_skin_atlas",
@@ -195,6 +204,7 @@ __all__ = [
     "plan_character",
     "planning_metadata",
     "planning_metadata_json",
+    "provider_statuses",
     "mesh_detailed_part",
     "solid_cuboid",
     "sample_design_materials",
