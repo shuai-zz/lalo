@@ -8,6 +8,10 @@ from lalo.appearance import (
     SurfaceFace,
     SurfaceMap,
 )
+from lalo.artifact_validation import (
+    ArtifactValidationResult,
+    validate_artifact_directory,
+)
 from lalo.body import (
     CANONICAL_PARTS,
     DEFAULT_LEG_GAP_MM,
@@ -107,6 +111,7 @@ from lalo.voxel import OccupancyGrid, solid_cuboid
 
 __all__ = [
     "CANONICAL_PARTS",
+    "ArtifactValidationResult",
     "CharacterPlan",
     "CharacterPlanCodecError",
     "CharacterPlanner",
@@ -196,6 +201,7 @@ __all__ = [
     "spider_man_plan",
     "transient_image_file",
     "validate_mesh",
+    "validate_artifact_directory",
     "write_canonical_manifest",
     "write_canonical_stls",
     "write_binary_stl",
