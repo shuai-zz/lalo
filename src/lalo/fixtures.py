@@ -19,7 +19,7 @@ def spider_man_plan() -> CharacterPlan:
     palette = (
         PaletteEntry(0, "spider red", "#C51D34"),
         PaletteEntry(1, "suit blue", "#174A8B"),
-        PaletteEntry(2, "web black", "#111111"),
+        PaletteEntry(2, "eye outline black", "#111111"),
         PaletteEntry(3, "eye white", "#F4F4F0"),
     )
     parts = tuple(
@@ -81,7 +81,7 @@ def _spider_surface(part: PartSpec, face: SurfaceFace) -> SurfaceMap:
     elif part.name == "torso" and face == SurfaceFace.BACK:
         materials = _grid(rows, columns, 1)
         _rectangle(materials, relief, 0, 13, 0, columns, 0, 0)
-        _draw_spider_emblem(materials, relief, material=0)
+        _draw_spider_emblem(materials, relief)
     elif part.name == "torso":
         materials = _grid(rows, columns, 1)
         _rectangle(materials, relief, 0, rows * 2 // 5, 0, columns, 0, 0)
@@ -144,7 +144,7 @@ def _draw_mask_web(materials: list[list[int]], relief: list[list[int]]) -> None:
         (rows // 2, columns - 4),
         (3, columns - 4),
     ):
-        _draw_line(materials, relief, center, endpoint, 2, 1)
+        _draw_orthogonal_line(materials, relief, center, endpoint, None, -1)
 
     for radius in (8, 15):
         ring = (
@@ -158,7 +158,7 @@ def _draw_mask_web(materials: list[list[int]], relief: list[list[int]]) -> None:
             (center[0] - radius * 2 // 3, center[1] - radius * 2 // 3),
         )
         for start, end in zip(ring, ring[1:] + ring[:1]):
-            _draw_line(materials, relief, start, end, 2, 1)
+            _draw_orthogonal_line(materials, relief, start, end, None, -1)
 
 
 def _draw_torso_web(materials: list[list[int]], relief: list[list[int]]) -> None:
@@ -167,27 +167,27 @@ def _draw_torso_web(materials: list[list[int]], relief: list[list[int]]) -> None
     columns = len(materials[0])
     center = columns // 2
     for row, inset in ((6, 4), (12, 6)):
-        _draw_line(materials, relief, (row, inset), (row + 2, center - 6), 2, -1)
+        _draw_line(materials, relief, (row, inset), (row + 2, center - 6), None, -1)
         _draw_line(
             materials,
             relief,
             (row + 2, center + 5),
             (row, columns - inset - 1),
-            2,
+            None,
             -1,
         )
 
 
 def _draw_spider_emblem(
-    materials: list[list[int]], relief: list[list[int]], *, material: int = 2
+    materials: list[list[int]], relief: list[list[int]]
 ) -> None:
-    """Draw a raised, eight-legged voxel spider on the chest."""
+    """Engrave an eight-legged spider without changing suit color."""
 
     columns = len(materials[0])
     center = columns // 2
-    _rectangle(materials, relief, 19, 22, center - 1, center + 1, material, 1)
-    _rectangle(materials, relief, 22, 26, center - 2, center + 2, material, 1)
-    _rectangle(materials, relief, 26, 30, center - 1, center + 1, material, 1)
+    _rectangle(materials, relief, 19, 22, center - 1, center + 1, None, -1)
+    _rectangle(materials, relief, 22, 26, center - 2, center + 2, None, -1)
+    _rectangle(materials, relief, 26, 30, center - 1, center + 1, None, -1)
 
     left_legs = (
         ((21, center - 1), (18, center - 4), (17, center - 8)),
@@ -197,14 +197,14 @@ def _draw_spider_emblem(
     )
     for points in left_legs:
         for start, end in zip(points, points[1:]):
-            _draw_orthogonal_line(materials, relief, start, end, material, 1)
+            _draw_orthogonal_line(materials, relief, start, end, None, -1)
             _draw_orthogonal_line(
                 materials,
                 relief,
                 (start[0], columns - 2 - start[1]),
                 (end[0], columns - 2 - end[1]),
-                material,
-                1,
+                None,
+                -1,
             )
 
 
@@ -213,7 +213,7 @@ def _draw_orthogonal_line(
     relief: list[list[int]],
     start: tuple[int, int],
     end: tuple[int, int],
-    material: int,
+    material: int | None,
     level: int,
 ) -> None:
     """Rasterize an edge-connected two-cell-wide voxel stair step."""
@@ -247,19 +247,19 @@ def _draw_simple_web(
     center = columns // 2
     safe_start = row_start + margin
     safe_end = row_end - margin - 1
-    _draw_line(materials, relief, (safe_start, center), (safe_end, margin), 2, -1)
+    _draw_line(materials, relief, (safe_start, center), (safe_end, margin), None, -1)
     _draw_line(
         materials,
         relief,
         (safe_start, center),
         (safe_end, columns - margin - 1),
-        2,
+        None,
         -1,
     )
     spacing = max(6, (row_end - row_start) // 3)
     for row in range(safe_start + spacing, safe_end, spacing):
         _draw_line(
-            materials, relief, (row, margin), (row, columns - margin - 1), 2, -1
+            materials, relief, (row, margin), (row, columns - margin - 1), None, -1
         )
 
 
@@ -274,7 +274,7 @@ def _draw_boot_web(materials: list[list[int]], relief: list[list[int]]) -> None:
         relief,
         (red_start + margin, columns // 2),
         (rows - margin - 1, margin),
-        2,
+        None,
         -1,
     )
     _draw_line(
@@ -282,12 +282,12 @@ def _draw_boot_web(materials: list[list[int]], relief: list[list[int]]) -> None:
         relief,
         (red_start + margin, columns // 2),
         (rows - margin - 1, columns - margin - 1),
-        2,
+        None,
         -1,
     )
     for row in range(red_start + margin + 4, rows - margin, 7):
         _draw_line(
-            materials, relief, (row, margin), (row, columns - margin - 1), 2, -1
+            materials, relief, (row, margin), (row, columns - margin - 1), None, -1
         )
 
 
@@ -296,7 +296,7 @@ def _draw_line(
     relief: list[list[int]],
     start: tuple[int, int],
     end: tuple[int, int],
-    material: int,
+    material: int | None,
     level: int,
 ) -> None:
     """Rasterize a printable two-cell-wide line with integer arithmetic."""
@@ -358,6 +358,16 @@ def _draw_spider_eyes(
         if 0 <= row + row_offset < len(materials)
         and 0 <= column + column_offset < columns
     }
+    eye_clearance = {
+        (row + row_offset, column + column_offset)
+        for row, column in outline_cells
+        for row_offset in range(-1, 2)
+        for column_offset in range(-1, 2)
+        if 0 <= row + row_offset < len(materials)
+        and 0 <= column + column_offset < columns
+    }
+    for row, column in eye_clearance:
+        relief[row][column] = 0
     for row, column in outline_cells - white_cells:
         materials[row][column] = 2
         relief[row][column] = 1
@@ -373,12 +383,13 @@ def _rectangle(
     row_end: int,
     column_start: int,
     column_end: int,
-    material: int,
+    material: int | None,
     level: int,
 ) -> None:
     for row in range(max(0, row_start), min(len(materials), row_end)):
         for column in range(max(0, column_start), min(len(materials[0]), column_end)):
-            materials[row][column] = material
+            if material is not None:
+                materials[row][column] = material
             relief[row][column] = level
 
 
