@@ -51,10 +51,7 @@ def _spider_surface(part: PartSpec) -> SurfaceMap:
     relief = _grid(rows, columns, 0)
     if part.name == "head":
         _draw_web(materials, relief)
-        _rectangle(materials, relief, 10, 27, 6, 17, 2, 1)
-        _rectangle(materials, relief, 13, 24, 9, 15, 3, 1)
-        _rectangle(materials, relief, 10, 27, 23, 34, 2, 1)
-        _rectangle(materials, relief, 13, 24, 25, 31, 3, 1)
+        _draw_spider_eyes(materials, relief)
     elif part.name == "torso":
         for row in range(rows):
             for column in range(columns):
@@ -101,6 +98,51 @@ def _draw_web(materials: list[list[int]], relief: list[list[int]]) -> None:
         _rectangle(materials, relief, row, min(row + 2, rows), 0, columns, 2, -1)
     center = columns // 2
     _rectangle(materials, relief, 0, rows, center - 1, center + 1, 2, -1)
+
+
+def _draw_spider_eyes(
+    materials: list[list[int]], relief: list[list[int]]
+) -> None:
+    """Draw mirrored tapered eyes as printable fine-grid voxel masks."""
+
+    columns = len(materials[0])
+    left_profile = (
+        (14, 16),
+        (13, 16),
+        (12, 16),
+        (11, 16),
+        (10, 16),
+        (9, 16),
+        (8, 16),
+        (7, 16),
+        (7, 15),
+        (8, 15),
+        (8, 14),
+        (9, 14),
+        (9, 13),
+        (10, 13),
+        (10, 12),
+    )
+    white_cells: set[tuple[int, int]] = set()
+    for row, (start, end) in enumerate(left_profile, start=10):
+        for column in range(start, end):
+            white_cells.add((row, column))
+            white_cells.add((row, columns - 1 - column))
+
+    outline_cells = {
+        (row + row_offset, column + column_offset)
+        for row, column in white_cells
+        for row_offset in range(-2, 3)
+        for column_offset in range(-2, 3)
+        if 0 <= row + row_offset < len(materials)
+        and 0 <= column + column_offset < columns
+    }
+    for row, column in outline_cells - white_cells:
+        materials[row][column] = 2
+        relief[row][column] = 1
+    for row, column in white_cells:
+        materials[row][column] = 3
+        relief[row][column] = 1
 
 
 def _rectangle(
