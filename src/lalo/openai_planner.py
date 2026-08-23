@@ -57,6 +57,67 @@ class OpenAIHTTPTransport:
             raise ValueError("OpenAI response must be a JSON object")
         return decoded
 
+    def generate_image(
+        self,
+        payload: dict[str, Any],
+        image: bytes | None = None,
+        image_media_type: str | None = None,
+    ) -> dict[str, Any]:
+        """Call the Images API without persisting an optional source image."""
+
+        if image is None:
+            body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+            content_type = "application/json"
+            endpoint = "images/generations"
+        else:
+            boundary = "lalo-openai-image-boundary"
+            body = _multipart_body(
+                payload, image, image_media_type or "application/octet-stream", boundary
+            )
+            content_type = f"multipart/form-data; boundary={boundary}"
+            endpoint = "images/edits"
+        request = urllib.request.Request(
+            f"{self.base_url.rstrip('/')}/{endpoint}",
+            data=body,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": content_type,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+            decoded = json.load(response)
+        if not isinstance(decoded, dict):
+            raise ValueError("OpenAI image response must be a JSON object")
+        return decoded
+
+
+def _multipart_body(
+    payload: dict[str, Any], image: bytes, image_media_type: str, boundary: str
+) -> bytes:
+    chunks: list[bytes] = []
+    for name, value in payload.items():
+        chunks.extend(
+            (
+                f"--{boundary}\r\n".encode(),
+                f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode(),
+                str(value).encode(),
+                b"\r\n",
+            )
+        )
+    chunks.extend(
+        (
+            f"--{boundary}\r\n".encode(),
+            b'Content-Disposition: form-data; name="image"; '
+            b'filename="reference-image"\r\n',
+            f"Content-Type: {image_media_type}\r\n\r\n".encode(),
+            image,
+            b"\r\n",
+            f"--{boundary}--\r\n".encode(),
+        )
+    )
+    return b"".join(chunks)
+
 
 @dataclass(frozen=True)
 class OpenAIPlanner:
