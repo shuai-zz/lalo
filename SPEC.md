@@ -206,7 +206,7 @@ STL output is single-color geometry. Nevertheless, the internal representation m
 
 ### 7.1 Provider responsibility
 
-The multimodal provider converts the prompt and optional image into a schema-valid `CharacterPlan`. It must not output STL, mesh code, arbitrary Python, or unrestricted CSG instructions.
+The design provider converts the prompt and optional image into a schema-valid `IdentitySpec` and one consistent four-view design sheet. A later bounded sampler converts those views into a schema-valid `CharacterPlan`. Providers must not output STL, mesh code, arbitrary Python, or unrestricted CSG instructions.
 
 The provider receives:
 
@@ -250,9 +250,9 @@ Normative schemas must define the exact dimensions of every map, allowed integer
 
 ### 7.3 Recommended inference route
 
-Use one constrained multimodal inference pass to produce semantic cues and per-face pixel/material/relief maps, followed by a deterministic local compiler. A bounded correction pass may be made only when local schema or semantic validation fails.
+Use two bounded stages. First extract the character identity and generate exactly four orthographic views in canonical front, back, left, right order. Then sample those views into per-face pixel/material/relief maps and validate the resulting `CharacterPlan` before deterministic geometry compilation. A bounded correction pass may be made only when local schema or semantic validation fails.
 
-Do not generate six-view images in the MVP. They add cross-view inconsistency and require another uncertain image-to-geometry stage. Direct constrained maps make front/back inference explicit, testable, editable in fixtures, and provider-independent.
+The design sheet is an inspectable intermediate artifact, not printable geometry. It must show one consistently scaled neutral-standing character without perspective, props, labels, or extra subjects. Local code splits and validates the panels; later sampling, palette reduction, protected-mask clipping, and geometry compilation remain deterministic and provider-independent wherever practical.
 
 ### 7.4 Provider abstraction
 
@@ -273,7 +273,11 @@ An OpenAI adapter is a suitable reference implementation because its API accepts
 CLI/API request
   -> input and single-subject validation
   -> transient image normalization
-  -> provider CharacterPlan generation
+  -> provider IdentitySpec extraction
+  -> provider four-view design generation
+  -> local front/back/left/right split and validation
+  -> bounded design-to-surface sampling
+  -> CharacterPlan generation
   -> local schema + semantic validation
   -> map cleanup and printability simplification
   -> deterministic occupancy-grid compiler
@@ -474,7 +478,9 @@ Exit: both fixtures pass automated validation and preserve recognizable details.
 
 ### M2 — AI planner
 
-- Provider protocol and first multimodal adapter.
+- Replaceable design/planning protocols and first multimodal adapter.
+- IdentitySpec and canonical four-view design-sheet generation.
+- Bounded design-to-surface sampling into CharacterPlan.
 - Chinese/English prompts, optional image, schema validation, and bounded retry.
 - Single-subject rejection.
 - Privacy cleanup and reproducibility metadata.
