@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from lalo_core.skin_glb import write_textured_skin_glb
+from lalo_core.skin_glb import _uv_coordinates, write_textured_skin_glb
 
 
 class TexturedSkinGlbTests(unittest.TestCase):
@@ -27,8 +27,14 @@ class TexturedSkinGlbTests(unittest.TestCase):
                 ["head", "torso", "right_arm", "left_arm", "right_leg", "left_leg"],
             )
             self.assertEqual(len(document["meshes"]), 6)
+            for mesh in document["meshes"]:
+                self.assertEqual(
+                    set(mesh["primitives"][0]["attributes"]),
+                    {"NORMAL", "POSITION", "TEXCOORD_0"},
+                )
             self.assertEqual(document["images"][0]["mimeType"], "image/png")
             self.assertEqual(document["samplers"][0]["magFilter"], 9728)
+            self.assertEqual(document["materials"][0]["alphaMode"], "OPAQUE")
             image_view = document["bufferViews"][document["images"][0]["bufferView"]]
             image = binary[
                 image_view["byteOffset"] : image_view["byteOffset"]
@@ -62,6 +68,12 @@ class TexturedSkinGlbTests(unittest.TestCase):
             first = write_textured_skin_glb(skin, root / "first.glb")
             second = write_textured_skin_glb(skin, root / "second.glb")
             self.assertEqual(first.read_bytes(), second.read_bytes())
+
+    def test_uv_coordinates_use_texel_centers(self) -> None:
+        coordinates = _uv_coordinates((8, 8, 16, 16))
+
+        self.assertEqual(coordinates[0], (8.5 / 64, 1 - 15.5 / 64))
+        self.assertEqual(coordinates[2], (15.5 / 64, 1 - 8.5 / 64))
 
     def test_rejects_invalid_skin_and_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
