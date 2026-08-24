@@ -162,6 +162,17 @@ def _side_part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
     lower = _crop_content(
         image, _Box(box.left, torso_end, box.right, box.bottom)
     )
+    corners = (
+        image.getpixel((0, 0)), image.getpixel((image.width - 1, 0)),
+        image.getpixel((0, image.height - 1)),
+        image.getpixel((image.width - 1, image.height - 1)),
+    )
+    background = tuple(
+        sum(color[channel] for color in corners) // 4 for channel in range(3)
+    )
+    head = _extend_horizontal_background(head, background)
+    middle = _extend_horizontal_background(middle, background)
+    lower = _extend_horizontal_background(lower, background)
     return {
         "head": ImageOps.mirror(head),
         "torso": ImageOps.mirror(middle),
@@ -170,6 +181,33 @@ def _side_part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
         "right_leg": ImageOps.mirror(lower),
         "left_leg": ImageOps.mirror(lower),
     }
+
+
+def _extend_horizontal_background(
+    image: Image.Image, background: tuple[int, int, int]
+) -> Image.Image:
+    """Fill only exterior row margins, preserving light regions inside a figure."""
+
+    extended = image.convert("RGB").copy()
+    pixels = extended.load()
+
+    def is_foreground(x: int, y: int) -> bool:
+        return sum(
+            (pixels[x, y][channel] - background[channel]) ** 2
+            for channel in range(3)
+        ) > 30**2
+
+    for y in range(extended.height):
+        foreground = [x for x in range(extended.width) if is_foreground(x, y)]
+        if not foreground:
+            continue
+        left, right = foreground[0], foreground[-1]
+        left_color, right_color = pixels[left, y], pixels[right, y]
+        for x in range(left):
+            pixels[x, y] = left_color
+        for x in range(right + 1, extended.width):
+            pixels[x, y] = right_color
+    return extended
 
 
 def _crop_content(image: Image.Image, search: _Box) -> Image.Image:

@@ -6,10 +6,21 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from lalo_core.skin_sampling import _UV, sample_skin_sheet
+from lalo_core.skin_sampling import _UV, _extend_horizontal_background, sample_skin_sheet
 
 
 class SkinSamplingTests(unittest.TestCase):
+    def test_extends_only_external_side_view_background(self) -> None:
+        source = Image.new("RGB", (5, 1), "white")
+        source.putpixel((1, 0), (200, 0, 0))
+        source.putpixel((3, 0), (0, 0, 200))
+
+        extended = _extend_horizontal_background(source, (255, 255, 255))
+
+        self.assertEqual(extended.getpixel((0, 0)), (200, 0, 0))
+        self.assertEqual(extended.getpixel((2, 0)), (255, 255, 255))
+        self.assertEqual(extended.getpixel((4, 0)), (0, 0, 200))
+
     def test_samples_two_panel_sheet_into_complete_skin_faces(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "source.png"
