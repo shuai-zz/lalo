@@ -54,19 +54,32 @@ def sample_skin_sheet(
         raise FileExistsError(f"output already exists: {destination}")
     image = Image.open(source).convert("RGB")
     boxes = _foreground_boxes(image)
-    if len(boxes) != 2:
-        raise ValueError("source must contain exactly two separated full-body figures")
+    if len(boxes) not in (2, 4):
+        raise ValueError(
+            "source must contain exactly two or four separated full-body figures"
+        )
     ordered = sorted(boxes, key=lambda box: box.left)
     common_height = max(box.height for box in ordered)
-    front_box, back_box = tuple(
+    calibrated = tuple(
         _Box(box.left, box.top, box.right, box.top + common_height) for box in ordered
     )
+    front_box = calibrated[0]
+    back_box = calibrated[1] if len(calibrated) == 2 else calibrated[2]
     front = _part_crops(image, front_box)
     back = _part_crops(image, back_box)
+    right = _side_part_crops(image, calibrated[1]) if len(calibrated) == 4 else None
+    left = _side_part_crops(image, calibrated[3]) if len(calibrated) == 4 else None
 
     skin = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     for part in _UV:
-        _paint_part(skin, part, front[part], back[part])
+        _paint_part(
+            skin,
+            part,
+            front[part],
+            back[part],
+            right=None if right is None else right[part],
+            left=None if left is None else left[part],
+        )
 
     review = _review_sheet(skin)
     destination.mkdir(parents=True)
@@ -111,7 +124,9 @@ def _foreground_boxes(image: Image.Image) -> tuple[_Box, ...]:
         )
         for component in components
     ]
-    return tuple(sorted(boxes, key=lambda box: box.width * box.height, reverse=True)[:2])
+    return tuple(
+        sorted(boxes, key=lambda box: box.width * box.height, reverse=True)[:4]
+    )
 
 
 def _part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
@@ -131,6 +146,33 @@ def _part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
         "right_leg": image.crop((center_left, torso_end, middle, box.bottom)),
         "left_leg": image.crop((middle, torso_end, center_right, box.bottom)),
     }
+
+
+def _side_part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
+    head_end = box.top + round(box.height * 8 / 32)
+    torso_end = box.top + round(box.height * 20 / 32)
+    head = _crop_content(
+        image, _Box(box.left, box.top, box.right, head_end)
+    )
+    middle = _crop_content(
+        image, _Box(box.left, head_end, box.right, torso_end)
+    )
+    lower = _crop_content(
+        image, _Box(box.left, torso_end, box.right, box.bottom)
+    )
+    return {
+        "head": head,
+        "torso": middle,
+        "right_arm": middle,
+        "left_arm": middle,
+        "right_leg": lower,
+        "left_leg": lower,
+    }
+
+
+def _crop_content(image: Image.Image, search: _Box) -> Image.Image:
+    content = _content_box(image, search)
+    return image.crop((content.left, search.top, content.right, search.bottom))
 
 
 def _content_box(image: Image.Image, search: _Box) -> _Box:
@@ -159,12 +201,28 @@ def _content_box(image: Image.Image, search: _Box) -> _Box:
     )
 
 
-def _paint_part(skin: Image.Image, part: str, front: Image.Image, back: Image.Image) -> None:
+def _paint_part(
+    skin: Image.Image,
+    part: str,
+    front: Image.Image,
+    back: Image.Image,
+    *,
+    right: Image.Image | None,
+    left: Image.Image | None,
+) -> None:
     faces = _UV[part]
     _paste(skin, faces["front"], front)
     _paste(skin, faces["back"], back)
-    _paste(skin, faces["right"], _side_texture(front, back, left=True))
-    _paste(skin, faces["left"], _side_texture(front, back, left=False))
+    _paste(
+        skin,
+        faces["right"],
+        right if right is not None else _side_texture(front, back, left=True),
+    )
+    _paste(
+        skin,
+        faces["left"],
+        left if left is not None else _side_texture(front, back, left=False),
+    )
     _paste(skin, faces["top"], _cap_texture(front, top=True))
     _paste(skin, faces["bottom"], _cap_texture(front, top=False))
 

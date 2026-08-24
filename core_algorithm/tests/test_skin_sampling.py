@@ -43,6 +43,21 @@ class SkinSamplingTests(unittest.TestCase):
                 first.review_sheet.read_bytes(), second.review_sheet.read_bytes()
             )
 
+    def test_four_panel_sheet_observes_distinct_side_textures(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "four-view.png"
+            _write_four_view_source(source)
+
+            artifacts = sample_skin_sheet(source, root / "result")
+            with Image.open(artifacts.skin) as stored_skin:
+                skin = stored_skin.convert("RGBA")
+            right = skin.crop(_UV["torso"]["right"])
+            left = skin.crop(_UV["torso"]["left"])
+            self.assertNotEqual(right.tobytes(), left.tobytes())
+            self.assertGreater(right.getpixel((0, 0))[0], right.getpixel((0, 0))[2])
+            self.assertGreater(left.getpixel((0, 0))[2], left.getpixel((0, 0))[0])
+
     def test_refuses_existing_output_and_invalid_panel_count(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -55,7 +70,7 @@ class SkinSamplingTests(unittest.TestCase):
                 sample_skin_sheet(source, existing)
 
             Image.new("RGB", (100, 100), "white").save(root / "blank.png")
-            with self.assertRaisesRegex(ValueError, "exactly two"):
+            with self.assertRaisesRegex(ValueError, "two or four"):
                 sample_skin_sheet(root / "blank.png", root / "invalid")
 
 
@@ -76,6 +91,34 @@ def _write_source(path: Path) -> None:
         draw.rectangle((origin + 20, 110, origin + 39, 169), fill="#03434b")
         draw.rectangle((origin + 40, 110, origin + 59, 169), fill="#03434b")
     image.save(path)
+
+
+def _write_four_view_source(path: Path) -> None:
+    image = Image.new("RGB", (600, 200), "white")
+    draw = ImageDraw.Draw(image)
+    _draw_front_or_back(draw, 20, back=False)
+    _draw_side(draw, 180, color="#b02020")
+    _draw_front_or_back(draw, 320, back=True)
+    _draw_side(draw, 500, color="#2030b0")
+    image.save(path)
+
+
+def _draw_front_or_back(draw: ImageDraw.ImageDraw, origin: int, *, back: bool) -> None:
+    draw.rectangle((origin + 20, 10, origin + 59, 49), fill="#181818")
+    if not back:
+        draw.rectangle((origin + 25, 25, origin + 54, 49), fill="#e7a474")
+    draw.rectangle((origin + 20, 50, origin + 59, 109), fill="#d99b00")
+    draw.rectangle((origin, 50, origin + 19, 109), fill="#d99b00")
+    draw.rectangle((origin + 60, 50, origin + 79, 109), fill="#d99b00")
+    draw.rectangle((origin + 20, 110, origin + 39, 169), fill="#03434b")
+    draw.rectangle((origin + 40, 110, origin + 59, 169), fill="#03434b")
+
+
+def _draw_side(draw: ImageDraw.ImageDraw, origin: int, *, color: str) -> None:
+    draw.rectangle((origin, 10, origin + 39, 49), fill="#181818")
+    draw.rectangle((origin, 30, origin + 19, 49), fill="#e7a474")
+    draw.rectangle((origin + 10, 50, origin + 29, 109), fill=color)
+    draw.rectangle((origin + 10, 110, origin + 29, 169), fill="#03434b")
 
 
 if __name__ == "__main__":
