@@ -74,6 +74,19 @@ The GLB contains six named cuboids, one embedded PNG texture, nearest-neighbor
 sampling, and the standard 32-unit assembled height. It intentionally excludes
 the optional outer skin layer, slim arms, animation, joints, and print relief.
 
+Batch a directory of PNG reference sheets into 4x skins, review sheets, GLBs,
+and a deterministic manifest for visual comparison:
+
+```bash
+PYTHONPATH=src python -m lalo_core.skin_batch \
+  ./evaluation-sources \
+  --output ./output/evaluation \
+  --scale 4
+```
+
+Input files are processed in filename order. The command publishes its output
+atomically and refuses to replace an existing evaluation directory.
+
 Output directories must be absent or empty. Generated artifacts belong under
 `core_algorithm/output/`, which is ignored by Git.
 
