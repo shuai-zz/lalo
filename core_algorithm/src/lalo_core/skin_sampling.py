@@ -296,28 +296,77 @@ def _paint_part(
     left: Image.Image | None,
 ) -> None:
     faces = _UV[part]
-    _paste(skin, faces["front"], front)
-    _paste(skin, faces["back"], back)
-    _paste(
-        skin,
-        faces["right"],
-        right if right is not None else _side_texture(front, back, left=True),
+    sources = {
+        "front": front,
+        "back": back,
+        "right": right if right is not None else _side_texture(front, back, left=True),
+        "left": left if left is not None else _side_texture(front, back, left=False),
+        "top": _cap_texture(front, top=True),
+        "bottom": _cap_texture(front, top=False),
+    }
+    prepared = {
+        face: _resize_face(skin, rectangle, sources[face])
+        for face, rectangle in faces.items()
+    }
+    (
+        prepared["front"],
+        prepared["right"],
+        prepared["back"],
+        prepared["left"],
+    ) = _stitch_vertical_edges(
+        prepared["front"], prepared["right"], prepared["back"], prepared["left"]
     )
-    _paste(
-        skin,
-        faces["left"],
-        left if left is not None else _side_texture(front, back, left=False),
-    )
-    _paste(skin, faces["top"], _cap_texture(front, top=True))
-    _paste(skin, faces["bottom"], _cap_texture(front, top=False))
+    for face, rectangle in faces.items():
+        _paste_face(skin, rectangle, prepared[face])
 
 
-def _paste(canvas: Image.Image, rectangle: tuple[int, int, int, int], source: Image.Image) -> None:
+def _resize_face(
+    canvas: Image.Image,
+    rectangle: tuple[int, int, int, int],
+    source: Image.Image,
+) -> Image.Image:
     scale = canvas.width // 64
     target = tuple(coordinate * scale for coordinate in rectangle)
     width = target[2] - target[0]
     height = target[3] - target[1]
-    canvas.paste(source.resize((width, height), Image.Resampling.LANCZOS).convert("RGBA"), target)
+    return source.resize((width, height), Image.Resampling.LANCZOS).convert("RGBA")
+
+
+def _paste_face(
+    canvas: Image.Image,
+    rectangle: tuple[int, int, int, int],
+    face: Image.Image,
+) -> None:
+    scale = canvas.width // 64
+    target = tuple(coordinate * scale for coordinate in rectangle)
+    canvas.paste(face, target)
+
+
+def _stitch_vertical_edges(
+    front: Image.Image,
+    right: Image.Image,
+    back: Image.Image,
+    left: Image.Image,
+) -> tuple[Image.Image, Image.Image, Image.Image, Image.Image]:
+    """Make adjoining vertical edge texels identical without changing interiors."""
+
+    stitched = tuple(face.copy().convert("RGBA") for face in (front, right, back, left))
+    front_out, right_out, back_out, left_out = stitched
+
+    def blend(a: Image.Image, ax: int, b: Image.Image, bx: int) -> None:
+        if a.height != b.height:
+            raise ValueError("adjoining faces must have equal heights")
+        for y in range(a.height):
+            first, second = a.getpixel((ax, y)), b.getpixel((bx, y))
+            color = tuple((first[channel] + second[channel]) // 2 for channel in range(4))
+            a.putpixel((ax, y), color)
+            b.putpixel((bx, y), color)
+
+    blend(front_out, 0, right_out, right_out.width - 1)
+    blend(front_out, front_out.width - 1, left_out, 0)
+    blend(back_out, back_out.width - 1, right_out, 0)
+    blend(back_out, 0, left_out, left_out.width - 1)
+    return stitched
 
 
 def _side_texture(front: Image.Image, back: Image.Image, *, left: bool) -> Image.Image:

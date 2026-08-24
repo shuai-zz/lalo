@@ -10,11 +10,38 @@ from lalo_core.skin_sampling import (
     _UV,
     _border_connected_background,
     _extend_horizontal_background,
+    _stitch_vertical_edges,
     sample_skin_sheet,
 )
 
 
 class SkinSamplingTests(unittest.TestCase):
+    def test_stitches_only_paired_vertical_face_edges(self) -> None:
+        front = Image.new("RGBA", (4, 3), (200, 0, 0, 255))
+        right = Image.new("RGBA", (2, 3), (0, 200, 0, 255))
+        back = Image.new("RGBA", (4, 3), (0, 0, 200, 255))
+        left = Image.new("RGBA", (2, 3), (200, 200, 0, 255))
+
+        stitched_front, stitched_right, stitched_back, stitched_left = (
+            _stitch_vertical_edges(front, right, back, left)
+        )
+
+        for y in range(3):
+            self.assertEqual(
+                stitched_front.getpixel((0, y)), stitched_right.getpixel((1, y))
+            )
+            self.assertEqual(
+                stitched_front.getpixel((3, y)), stitched_left.getpixel((0, y))
+            )
+            self.assertEqual(
+                stitched_back.getpixel((3, y)), stitched_right.getpixel((0, y))
+            )
+            self.assertEqual(
+                stitched_back.getpixel((0, y)), stitched_left.getpixel((1, y))
+            )
+        self.assertEqual(stitched_front.getpixel((1, 1)), (200, 0, 0, 255))
+        self.assertEqual(stitched_back.getpixel((1, 1)), (0, 0, 200, 255))
+
     def test_border_connected_mask_preserves_enclosed_white_clothing(self) -> None:
         image = Image.new("RGB", (9, 9), "white")
         draw = ImageDraw.Draw(image)
@@ -121,14 +148,14 @@ class SkinSamplingTests(unittest.TestCase):
             right = skin.crop(_UV["torso"]["right"])
             left = skin.crop(_UV["torso"]["left"])
             self.assertNotEqual(right.tobytes(), left.tobytes())
-            self.assertGreater(right.getpixel((0, 0))[0], right.getpixel((0, 0))[2])
-            self.assertGreater(left.getpixel((0, 0))[2], left.getpixel((0, 0))[0])
+            self.assertGreater(right.getpixel((1, 1))[0], right.getpixel((1, 1))[2])
+            self.assertGreater(left.getpixel((1, 1))[2], left.getpixel((1, 1))[0])
             right_head = skin.crop(_UV["head"]["right"])
             left_head = skin.crop(_UV["head"]["left"])
-            self.assertGreater(right_head.getpixel((7, 7))[0], 100)
-            self.assertLess(right_head.getpixel((0, 7))[0], 100)
-            self.assertGreater(left_head.getpixel((0, 7))[0], 100)
-            self.assertLess(left_head.getpixel((7, 7))[0], 100)
+            self.assertGreater(right_head.getpixel((6, 7))[0], 100)
+            self.assertLess(right_head.getpixel((1, 7))[0], 100)
+            self.assertGreater(left_head.getpixel((1, 7))[0], 100)
+            self.assertLess(left_head.getpixel((6, 7))[0], 100)
 
     def test_refuses_existing_output_and_invalid_panel_count(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
