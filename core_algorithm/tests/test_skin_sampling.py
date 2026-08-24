@@ -40,6 +40,25 @@ class SkinSamplingTests(unittest.TestCase):
                 skin.crop(_UV["torso"]["back"]).tobytes(),
             )
 
+    def test_protruding_chin_is_kept_out_of_torso(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.png"
+            _write_source(source, protruding_chin=True)
+
+            artifacts = sample_skin_sheet(source, root / "result")
+            with Image.open(artifacts.skin) as stored_skin:
+                skin = stored_skin.convert("RGB")
+            torso = skin.crop(_UV["torso"]["front"])
+            skin_color = (231, 164, 116)
+            self.assertFalse(
+                any(
+                    torso.getpixel((x, y)) == skin_color
+                    for y in range(torso.height)
+                    for x in range(torso.width)
+                )
+            )
+
     def test_output_is_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -112,7 +131,7 @@ class SkinSamplingTests(unittest.TestCase):
                 sample_skin_sheet(root / "blank.png", root / "invalid")
 
 
-def _write_source(path: Path) -> None:
+def _write_source(path: Path, *, protruding_chin: bool = False) -> None:
     image = Image.new("RGB", (360, 200), "white")
     draw = ImageDraw.Draw(image)
     for origin, back in ((30, False), (220, True)):
@@ -126,6 +145,8 @@ def _write_source(path: Path) -> None:
         draw.rectangle((origin + 60, 50, origin + 79, 109), fill="#d99b00")
         if not back:
             draw.rectangle((origin + 35, 50, origin + 44, 109), fill="#f4f4f4")
+            if protruding_chin:
+                draw.rectangle((origin + 32, 50, origin + 47, 59), fill="#e7a474")
         draw.rectangle((origin + 20, 110, origin + 39, 169), fill="#03434b")
         draw.rectangle((origin + 40, 110, origin + 59, 169), fill="#03434b")
     image.save(path)

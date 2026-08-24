@@ -133,6 +133,7 @@ def _foreground_boxes(image: Image.Image) -> tuple[_Box, ...]:
 
 def _part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
     head_end = box.top + round(box.height * 8 / 32)
+    torso_start = box.top + round(box.height * 10 / 32)
     torso_end = box.top + round(box.height * 20 / 32)
     head_search_end = box.top + round(box.height * 7 / 32)
     head_box = _content_box(
@@ -141,8 +142,8 @@ def _part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
     center_left, center_right = head_box.left, head_box.right
     middle = (center_left + center_right) // 2
     return {
-        "head": image.crop((head_box.left, box.top, head_box.right, head_end)),
-        "torso": image.crop((center_left, head_end, center_right, torso_end)),
+        "head": image.crop((head_box.left, box.top, head_box.right, torso_start)),
+        "torso": image.crop((center_left, torso_start, center_right, torso_end)),
         "right_arm": image.crop((box.left, head_end, center_left, torso_end)),
         "left_arm": image.crop((center_right, head_end, box.right, torso_end)),
         "right_leg": image.crop((center_left, torso_end, middle, box.bottom)),
