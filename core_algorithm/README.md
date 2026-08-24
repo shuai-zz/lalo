@@ -62,6 +62,18 @@ legacy two-panel input, side faces remain deterministic blends of the nearest
 observed edges. Top and bottom faces are approximations in both modes until an
 additional reference or a learned completion stage is added.
 
+Render the sampled skin on the fixed classic block body for interactive review:
+
+```bash
+PYTHONPATH=src python -m lalo_core.skin_glb \
+  ./output/image-first/skin.png \
+  --output ./output/image-first/preview.glb
+```
+
+The GLB contains six named cuboids, one embedded PNG texture, nearest-neighbor
+sampling, and the standard 32-unit assembled height. It intentionally excludes
+the optional outer skin layer, slim arms, animation, joints, and print relief.
+
 Output directories must be absent or empty. Generated artifacts belong under
 `core_algorithm/output/`, which is ignored by Git.
 
