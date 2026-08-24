@@ -42,6 +42,25 @@ Generate the baseline 14-part STL set without using the production package:
 PYTHONPATH=src python -c 'from lalo_core import write_canonical_stls; write_canonical_stls("output/baseline")'
 ```
 
+Convert a strict two-panel front/back Minecraft character sheet into an
+editable standard 64x64 skin and a six-panel review sheet:
+
+```bash
+PYTHONPATH=src python -m lalo_core.skin_sampling \
+  ./front-back-source.png \
+  --output ./output/image-first
+```
+
+The source must contain exactly two separated, orthographic, full-body figures:
+front on the left and back on the right. Both figures must use the same scale,
+the classic 8/12/12 head/body/leg height proportions, complete rectangular body
+silhouettes, a uniform background, and texture-only hair and clothing details.
+
+This first experiment observes front and back colors directly. Side, top, and
+bottom faces are deterministic blends of the nearest observed edges; they are
+explicitly approximations until side references or a learned completion stage
+are added.
+
 Output directories must be absent or empty. Generated artifacts belong under
 `core_algorithm/output/`, which is ignored by Git.
 
