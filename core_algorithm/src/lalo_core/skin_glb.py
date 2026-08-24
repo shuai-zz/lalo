@@ -217,7 +217,7 @@ def _gltf_vertex(vertex: tuple[float, float, float]) -> tuple[float, float, floa
 def _uv_coordinates(rectangle: tuple[int, int, int, int]) -> tuple[tuple[float, float], ...]:
     x0, y0, x1, y1 = rectangle
     u0, u1 = (x0 + 0.5) / 64, (x1 - 0.5) / 64
-    v0, v1 = 1 - (y0 + 0.5) / 64, 1 - (y1 - 0.5) / 64
+    v0, v1 = (y0 + 0.5) / 64, (y1 - 0.5) / 64
     return (u0, v1), (u1, v1), (u1, v0), (u0, v0)
 
 
