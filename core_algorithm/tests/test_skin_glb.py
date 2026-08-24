@@ -72,8 +72,8 @@ class TexturedSkinGlbTests(unittest.TestCase):
     def test_uv_coordinates_use_texel_centers(self) -> None:
         coordinates = _uv_coordinates((8, 8, 16, 16))
 
-        self.assertEqual(coordinates[0], (8.5 / 64, 1 - 15.5 / 64))
-        self.assertEqual(coordinates[2], (15.5 / 64, 1 - 8.5 / 64))
+        self.assertEqual(coordinates[0], (8.5 / 64, 15.5 / 64))
+        self.assertEqual(coordinates[2], (15.5 / 64, 8.5 / 64))
 
     def test_rejects_invalid_skin_and_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
