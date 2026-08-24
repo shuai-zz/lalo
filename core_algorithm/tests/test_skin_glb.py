@@ -75,12 +75,16 @@ class TexturedSkinGlbTests(unittest.TestCase):
         self.assertEqual(coordinates[0], (8.5 / 64, 15.5 / 64))
         self.assertEqual(coordinates[2], (15.5 / 64, 8.5 / 64))
 
+        hd_coordinates = _uv_coordinates((8, 8, 16, 16), scale=4)
+        self.assertEqual(hd_coordinates[0], (32.5 / 256, 63.5 / 256))
+        self.assertEqual(hd_coordinates[2], (63.5 / 256, 32.5 / 256))
+
     def test_rejects_invalid_skin_and_existing_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             invalid = root / "invalid.png"
             Image.new("RGB", (32, 64), "red").save(invalid)
-            with self.assertRaisesRegex(ValueError, "64x64"):
+            with self.assertRaisesRegex(ValueError, "multiple of 64"):
                 write_textured_skin_glb(invalid, root / "invalid.glb")
 
             skin = root / "skin.png"

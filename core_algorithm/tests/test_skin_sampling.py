@@ -43,6 +43,27 @@ class SkinSamplingTests(unittest.TestCase):
                 first.review_sheet.read_bytes(), second.review_sheet.read_bytes()
             )
 
+    def test_four_x_skin_preserves_more_source_detail(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.png"
+            _write_four_view_source(source)
+
+            artifacts = sample_skin_sheet(source, root / "result", scale=4)
+            with Image.open(artifacts.skin) as skin:
+                self.assertEqual(skin.size, (256, 256))
+                front = tuple(value * 4 for value in _UV["torso"]["front"])
+                self.assertEqual(skin.crop(front).size, (32, 48))
+
+    def test_rejects_invalid_scale(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "source.png"
+            _write_source(source)
+            for scale in (0, -1, True, 1.5):
+                with self.subTest(scale=scale):
+                    with self.assertRaisesRegex(ValueError, "positive integer"):
+                        sample_skin_sheet(source, Path(directory) / "result", scale=scale)
+
     def test_four_panel_sheet_observes_distinct_side_textures(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
