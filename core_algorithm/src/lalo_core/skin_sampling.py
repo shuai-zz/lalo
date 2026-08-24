@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 
 
 @dataclass(frozen=True)
@@ -163,12 +163,12 @@ def _side_part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
         image, _Box(box.left, torso_end, box.right, box.bottom)
     )
     return {
-        "head": head,
-        "torso": middle,
-        "right_arm": middle,
-        "left_arm": middle,
-        "right_leg": lower,
-        "left_leg": lower,
+        "head": ImageOps.mirror(head),
+        "torso": ImageOps.mirror(middle),
+        "right_arm": ImageOps.mirror(middle),
+        "left_arm": ImageOps.mirror(middle),
+        "right_leg": ImageOps.mirror(lower),
+        "left_leg": ImageOps.mirror(lower),
     }
 
 
