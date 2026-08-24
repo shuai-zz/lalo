@@ -78,6 +78,12 @@ class SkinSamplingTests(unittest.TestCase):
             self.assertNotEqual(right.tobytes(), left.tobytes())
             self.assertGreater(right.getpixel((0, 0))[0], right.getpixel((0, 0))[2])
             self.assertGreater(left.getpixel((0, 0))[2], left.getpixel((0, 0))[0])
+            right_head = skin.crop(_UV["head"]["right"])
+            left_head = skin.crop(_UV["head"]["left"])
+            self.assertGreater(right_head.getpixel((7, 7))[0], 100)
+            self.assertLess(right_head.getpixel((0, 7))[0], 100)
+            self.assertGreater(left_head.getpixel((0, 7))[0], 100)
+            self.assertLess(left_head.getpixel((7, 7))[0], 100)
 
     def test_refuses_existing_output_and_invalid_panel_count(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -118,9 +124,9 @@ def _write_four_view_source(path: Path) -> None:
     image = Image.new("RGB", (600, 200), "white")
     draw = ImageDraw.Draw(image)
     _draw_front_or_back(draw, 20, back=False)
-    _draw_side(draw, 180, color="#b02020")
+    _draw_side(draw, 180, color="#b02020", front_on_left=True)
     _draw_front_or_back(draw, 320, back=True)
-    _draw_side(draw, 500, color="#2030b0")
+    _draw_side(draw, 500, color="#2030b0", front_on_left=False)
     image.save(path)
 
 
@@ -135,9 +141,12 @@ def _draw_front_or_back(draw: ImageDraw.ImageDraw, origin: int, *, back: bool) -
     draw.rectangle((origin + 40, 110, origin + 59, 169), fill="#03434b")
 
 
-def _draw_side(draw: ImageDraw.ImageDraw, origin: int, *, color: str) -> None:
+def _draw_side(
+    draw: ImageDraw.ImageDraw, origin: int, *, color: str, front_on_left: bool
+) -> None:
     draw.rectangle((origin, 10, origin + 39, 49), fill="#181818")
-    draw.rectangle((origin, 30, origin + 19, 49), fill="#e7a474")
+    face_left = origin if front_on_left else origin + 20
+    draw.rectangle((face_left, 30, face_left + 19, 49), fill="#e7a474")
     draw.rectangle((origin + 10, 50, origin + 29, 109), fill=color)
     draw.rectangle((origin + 10, 110, origin + 29, 169), fill="#03434b")
 
