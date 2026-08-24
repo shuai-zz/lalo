@@ -47,8 +47,8 @@ def write_textured_skin_glb(
     output = Path(destination)
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
-    texture = _normalized_skin_png(skin_path)
-    document, binary = _build_glb(texture)
+    texture, scale = _normalized_skin_png(skin_path)
+    document, binary = _build_glb(texture, scale)
     json_chunk = json.dumps(
         document, separators=(",", ":"), sort_keys=True
     ).encode("utf-8")
@@ -69,18 +69,19 @@ def write_textured_skin_glb(
     return output
 
 
-def _normalized_skin_png(path: str | os.PathLike[str]) -> bytes:
+def _normalized_skin_png(path: str | os.PathLike[str]) -> tuple[bytes, int]:
     with Image.open(path) as source:
         source.load()
-        if source.size != (64, 64):
-            raise ValueError("skin must be exactly 64x64 pixels")
+        if source.width != source.height or source.width % 64 or source.width < 64:
+            raise ValueError("skin must be a square integer multiple of 64 pixels")
+        scale = source.width // 64
         skin = source.convert("RGBA")
     stream = io.BytesIO()
     skin.save(stream, format="PNG", optimize=False, compress_level=9)
-    return stream.getvalue()
+    return stream.getvalue(), scale
 
 
-def _build_glb(texture: bytes) -> tuple[dict[str, object], bytes]:
+def _build_glb(texture: bytes, scale: int = 1) -> tuple[dict[str, object], bytes]:
     binary = bytearray()
     buffer_views: list[dict[str, object]] = []
     accessors: list[dict[str, object]] = []
@@ -88,7 +89,7 @@ def _build_glb(texture: bytes) -> tuple[dict[str, object], bytes]:
     nodes: list[dict[str, object]] = []
 
     for part in _PARTS:
-        positions, normals, texcoords, indices = _cuboid_data(part)
+        positions, normals, texcoords, indices = _cuboid_data(part, texture_scale=scale)
         position_accessor = _append_accessor(
             binary, buffer_views, accessors, positions, component_type=5126,
             accessor_type="VEC3", count=24, target=34962,
@@ -170,7 +171,7 @@ def _build_glb(texture: bytes) -> tuple[dict[str, object], bytes]:
 
 
 def _cuboid_data(
-    part: _Part,
+    part: _Part, *, texture_scale: int = 1
 ) -> tuple[
     list[tuple[float, float, float]],
     list[tuple[float, float, float]],
@@ -204,7 +205,9 @@ def _cuboid_data(
         start = len(positions)
         positions.extend(_gltf_vertex(vertex) for vertex in vertices)
         normals.extend((face_normals[face_name],) * 4)
-        texcoords.extend(_uv_coordinates(_UV[part.name][face_name]))
+        texcoords.extend(
+            _uv_coordinates(_UV[part.name][face_name], scale=texture_scale)
+        )
         indices.extend((start, start + 1, start + 2, start, start + 2, start + 3))
     return positions, normals, texcoords, indices
 
@@ -214,10 +217,13 @@ def _gltf_vertex(vertex: tuple[float, float, float]) -> tuple[float, float, floa
     return float(x), float(z), float(-y)
 
 
-def _uv_coordinates(rectangle: tuple[int, int, int, int]) -> tuple[tuple[float, float], ...]:
+def _uv_coordinates(
+    rectangle: tuple[int, int, int, int], *, scale: int = 1
+) -> tuple[tuple[float, float], ...]:
     x0, y0, x1, y1 = rectangle
-    u0, u1 = (x0 + 0.5) / 64, (x1 - 0.5) / 64
-    v0, v1 = (y0 + 0.5) / 64, (y1 - 0.5) / 64
+    size = 64 * scale
+    u0, u1 = (x0 * scale + 0.5) / size, (x1 * scale - 0.5) / size
+    v0, v1 = (y0 * scale + 0.5) / size, (y1 * scale - 0.5) / size
     return (u0, v1), (u1, v1), (u1, v0), (u0, v0)
 
 

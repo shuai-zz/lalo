@@ -45,13 +45,15 @@ _UV = {
 
 
 def sample_skin_sheet(
-    source: str | os.PathLike[str], output: str | os.PathLike[str]
+    source: str | os.PathLike[str], output: str | os.PathLike[str], *, scale: int = 1
 ) -> SkinArtifacts:
-    """Convert a two-panel front/back sheet into an editable 64x64 skin."""
+    """Convert a two- or four-panel sheet into an editable scaled skin."""
 
     destination = Path(output)
     if destination.exists():
         raise FileExistsError(f"output already exists: {destination}")
+    if isinstance(scale, bool) or not isinstance(scale, int) or scale < 1:
+        raise ValueError("scale must be a positive integer")
     image = Image.open(source).convert("RGB")
     boxes = _foreground_boxes(image)
     if len(boxes) not in (2, 4):
@@ -70,7 +72,7 @@ def sample_skin_sheet(
     right = _side_part_crops(image, calibrated[1]) if len(calibrated) == 4 else None
     left = _side_part_crops(image, calibrated[3]) if len(calibrated) == 4 else None
 
-    skin = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    skin = Image.new("RGBA", (64 * scale, 64 * scale), (0, 0, 0, 0))
     for part in _UV:
         _paint_part(
             skin,
@@ -228,9 +230,11 @@ def _paint_part(
 
 
 def _paste(canvas: Image.Image, rectangle: tuple[int, int, int, int], source: Image.Image) -> None:
-    width = rectangle[2] - rectangle[0]
-    height = rectangle[3] - rectangle[1]
-    canvas.paste(source.resize((width, height), Image.Resampling.LANCZOS).convert("RGBA"), rectangle)
+    scale = canvas.width // 64
+    target = tuple(coordinate * scale for coordinate in rectangle)
+    width = target[2] - target[0]
+    height = target[3] - target[1]
+    canvas.paste(source.resize((width, height), Image.Resampling.LANCZOS).convert("RGBA"), target)
 
 
 def _side_texture(front: Image.Image, back: Image.Image, *, left: bool) -> Image.Image:
@@ -250,7 +254,8 @@ def _cap_texture(source: Image.Image, *, top: bool) -> Image.Image:
 
 
 def _face(skin: Image.Image, part: str, face: str) -> Image.Image:
-    return skin.crop(_UV[part][face])
+    scale = skin.width // 64
+    return skin.crop(tuple(coordinate * scale for coordinate in _UV[part][face]))
 
 
 def _orthographic(skin: Image.Image, face: str, scale: int = 8) -> Image.Image:
@@ -314,8 +319,9 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m lalo_core.skin_sampling")
     parser.add_argument("source", type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--scale", type=int, default=1)
     arguments = parser.parse_args(list(argv) if argv is not None else None)
-    artifacts = sample_skin_sheet(arguments.source, arguments.output)
+    artifacts = sample_skin_sheet(arguments.source, arguments.output, scale=arguments.scale)
     print(artifacts.skin)
     print(artifacts.review_sheet)
     return 0
