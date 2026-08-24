@@ -55,7 +55,8 @@ def sample_skin_sheet(
     if isinstance(scale, bool) or not isinstance(scale, int) or scale < 1:
         raise ValueError("scale must be a positive integer")
     image = Image.open(source).convert("RGB")
-    boxes = _foreground_boxes(image)
+    background_pixels = _border_connected_background(image)
+    boxes = _foreground_boxes(image, background_pixels)
     if len(boxes) not in (2, 4):
         raise ValueError(
             "source must contain exactly two or four separated full-body figures"
@@ -67,10 +68,16 @@ def sample_skin_sheet(
     )
     front_box = calibrated[0]
     back_box = calibrated[1] if len(calibrated) == 2 else calibrated[2]
-    front = _part_crops(image, front_box)
-    back = _part_crops(image, back_box)
-    right = _side_part_crops(image, calibrated[1]) if len(calibrated) == 4 else None
-    left = _side_part_crops(image, calibrated[3]) if len(calibrated) == 4 else None
+    front = _part_crops(image, front_box, background_pixels)
+    back = _part_crops(image, back_box, background_pixels)
+    right = (
+        _side_part_crops(image, calibrated[1], background_pixels)
+        if len(calibrated) == 4 else None
+    )
+    left = (
+        _side_part_crops(image, calibrated[3], background_pixels)
+        if len(calibrated) == 4 else None
+    )
 
     skin = Image.new("RGBA", (64 * scale, 64 * scale), (0, 0, 0, 0))
     for part in _UV:
@@ -92,18 +99,50 @@ def sample_skin_sheet(
     return SkinArtifacts(skin_path, review_path)
 
 
-def _foreground_boxes(image: Image.Image) -> tuple[_Box, ...]:
+def _border_connected_background(image: Image.Image) -> frozenset[tuple[int, int]]:
     pixels = image.load()
     corners = (
         pixels[0, 0], pixels[image.width - 1, 0],
         pixels[0, image.height - 1], pixels[image.width - 1, image.height - 1],
     )
     background = tuple(sum(color[channel] for color in corners) // 4 for channel in range(3))
+    def is_background(x: int, y: int) -> bool:
+        return sum(
+            (pixels[x, y][channel] - background[channel]) ** 2
+            for channel in range(3)
+        ) <= 30**2
+
+    border = (
+        [(x, 0) for x in range(image.width)]
+        + [(x, image.height - 1) for x in range(image.width)]
+        + [(0, y) for y in range(1, image.height - 1)]
+        + [(image.width - 1, y) for y in range(1, image.height - 1)]
+    )
+    connected = {point for point in border if is_background(*point)}
+    queue = deque(connected)
+    while queue:
+        x, y = queue.popleft()
+        for neighbor in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            nx, ny = neighbor
+            if (
+                0 <= nx < image.width
+                and 0 <= ny < image.height
+                and neighbor not in connected
+                and is_background(nx, ny)
+            ):
+                connected.add(neighbor)
+                queue.append(neighbor)
+    return frozenset(connected)
+
+
+def _foreground_boxes(
+    image: Image.Image, background_pixels: frozenset[tuple[int, int]]
+) -> tuple[_Box, ...]:
     foreground = {
         (x, y)
         for y in range(image.height)
         for x in range(image.width)
-        if sum((pixels[x, y][channel] - background[channel]) ** 2 for channel in range(3)) > 30**2
+        if (x, y) not in background_pixels
     }
     components: list[set[tuple[int, int]]] = []
     while foreground:
@@ -131,13 +170,17 @@ def _foreground_boxes(image: Image.Image) -> tuple[_Box, ...]:
     )
 
 
-def _part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
+def _part_crops(
+    image: Image.Image,
+    box: _Box,
+    background_pixels: frozenset[tuple[int, int]],
+) -> dict[str, Image.Image]:
     head_end = box.top + round(box.height * 8 / 32)
     torso_start = box.top + round(box.height * 10 / 32)
     torso_end = box.top + round(box.height * 20 / 32)
     head_search_end = box.top + round(box.height * 7 / 32)
     head_box = _content_box(
-        image, _Box(box.left, box.top, box.right, head_search_end)
+        image, _Box(box.left, box.top, box.right, head_search_end), background_pixels
     )
     center_left, center_right = head_box.left, head_box.right
     middle = (center_left + center_right) // 2
@@ -151,17 +194,21 @@ def _part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
     }
 
 
-def _side_part_crops(image: Image.Image, box: _Box) -> dict[str, Image.Image]:
+def _side_part_crops(
+    image: Image.Image,
+    box: _Box,
+    background_pixels: frozenset[tuple[int, int]],
+) -> dict[str, Image.Image]:
     head_end = box.top + round(box.height * 8 / 32)
     torso_end = box.top + round(box.height * 20 / 32)
     head = _crop_content(
-        image, _Box(box.left, box.top, box.right, head_end)
+        image, _Box(box.left, box.top, box.right, head_end), background_pixels
     )
     middle = _crop_content(
-        image, _Box(box.left, head_end, box.right, torso_end)
+        image, _Box(box.left, head_end, box.right, torso_end), background_pixels
     )
     lower = _crop_content(
-        image, _Box(box.left, torso_end, box.right, box.bottom)
+        image, _Box(box.left, torso_end, box.right, box.bottom), background_pixels
     )
     corners = (
         image.getpixel((0, 0)), image.getpixel((image.width - 1, 0)),
@@ -211,28 +258,25 @@ def _extend_horizontal_background(
     return extended
 
 
-def _crop_content(image: Image.Image, search: _Box) -> Image.Image:
-    content = _content_box(image, search)
+def _crop_content(
+    image: Image.Image,
+    search: _Box,
+    background_pixels: frozenset[tuple[int, int]],
+) -> Image.Image:
+    content = _content_box(image, search, background_pixels)
     return image.crop((content.left, search.top, content.right, search.bottom))
 
 
-def _content_box(image: Image.Image, search: _Box) -> _Box:
-    pixels = image.load()
-    corners = (
-        pixels[0, 0], pixels[image.width - 1, 0],
-        pixels[0, image.height - 1], pixels[image.width - 1, image.height - 1],
-    )
-    background = tuple(
-        sum(color[channel] for color in corners) // 4 for channel in range(3)
-    )
+def _content_box(
+    image: Image.Image,
+    search: _Box,
+    background_pixels: frozenset[tuple[int, int]],
+) -> _Box:
     points = [
         (x, y)
         for y in range(search.top, min(search.bottom, image.height))
         for x in range(search.left, min(search.right, image.width))
-        if sum(
-            (pixels[x, y][channel] - background[channel]) ** 2
-            for channel in range(3)
-        ) > 30**2
+        if (x, y) not in background_pixels
     ]
     if not points:
         raise ValueError("figure contains an empty canonical body region")

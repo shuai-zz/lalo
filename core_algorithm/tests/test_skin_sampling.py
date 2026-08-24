@@ -6,10 +6,25 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from lalo_core.skin_sampling import _UV, _extend_horizontal_background, sample_skin_sheet
+from lalo_core.skin_sampling import (
+    _UV,
+    _border_connected_background,
+    _extend_horizontal_background,
+    sample_skin_sheet,
+)
 
 
 class SkinSamplingTests(unittest.TestCase):
+    def test_border_connected_mask_preserves_enclosed_white_clothing(self) -> None:
+        image = Image.new("RGB", (9, 9), "white")
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((2, 2, 6, 6), outline="#606060", width=1)
+
+        background = _border_connected_background(image)
+
+        self.assertIn((0, 0), background)
+        self.assertNotIn((4, 4), background)
+
     def test_extends_only_external_side_view_background(self) -> None:
         source = Image.new("RGB", (5, 1), "white")
         source.putpixel((1, 0), (200, 0, 0))
