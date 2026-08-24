@@ -88,7 +88,7 @@ def _build_glb(texture: bytes) -> tuple[dict[str, object], bytes]:
     nodes: list[dict[str, object]] = []
 
     for part in _PARTS:
-        positions, texcoords, indices = _cuboid_data(part)
+        positions, normals, texcoords, indices = _cuboid_data(part)
         position_accessor = _append_accessor(
             binary, buffer_views, accessors, positions, component_type=5126,
             accessor_type="VEC3", count=24, target=34962,
@@ -100,6 +100,10 @@ def _build_glb(texture: bytes) -> tuple[dict[str, object], bytes]:
             binary, buffer_views, accessors, texcoords, component_type=5126,
             accessor_type="VEC2", count=24, target=34962, packer=_FLOAT2,
         )
+        normal_accessor = _append_accessor(
+            binary, buffer_views, accessors, normals, component_type=5126,
+            accessor_type="VEC3", count=24, target=34962, packer=_FLOAT3,
+        )
         index_accessor = _append_accessor(
             binary, buffer_views, accessors, indices, component_type=5123,
             accessor_type="SCALAR", count=36, target=34963, packer=_USHORT,
@@ -110,6 +114,7 @@ def _build_glb(texture: bytes) -> tuple[dict[str, object], bytes]:
                 "primitives": [
                     {
                         "attributes": {
+                            "NORMAL": normal_accessor,
                             "POSITION": position_accessor,
                             "TEXCOORD_0": texcoord_accessor,
                         },
@@ -142,8 +147,7 @@ def _build_glb(texture: bytes) -> tuple[dict[str, object], bytes]:
                     "metallicFactor": 0.0,
                     "roughnessFactor": 1.0,
                 },
-                "alphaMode": "MASK",
-                "alphaCutoff": 0.5,
+                "alphaMode": "OPAQUE",
                 "doubleSided": False,
             }
         ],
@@ -167,7 +171,12 @@ def _build_glb(texture: bytes) -> tuple[dict[str, object], bytes]:
 
 def _cuboid_data(
     part: _Part,
-) -> tuple[list[tuple[float, float, float]], list[tuple[float, float]], list[int]]:
+) -> tuple[
+    list[tuple[float, float, float]],
+    list[tuple[float, float, float]],
+    list[tuple[float, float]],
+    list[int],
+]:
     x0, y0, z0 = part.origin
     width, depth, height = part.size
     x1, y1, z1 = x0 + width, y0 + depth, z0 + height
@@ -179,15 +188,25 @@ def _cuboid_data(
         "top": ((x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1)),
         "bottom": ((x0, y1, z0), (x1, y1, z0), (x1, y0, z0), (x0, y0, z0)),
     }
+    face_normals = {
+        "front": (0.0, 0.0, 1.0),
+        "back": (0.0, 0.0, -1.0),
+        "right": (-1.0, 0.0, 0.0),
+        "left": (1.0, 0.0, 0.0),
+        "top": (0.0, 1.0, 0.0),
+        "bottom": (0.0, -1.0, 0.0),
+    }
     positions: list[tuple[float, float, float]] = []
+    normals: list[tuple[float, float, float]] = []
     texcoords: list[tuple[float, float]] = []
     indices: list[int] = []
     for face_name, vertices in faces.items():
         start = len(positions)
         positions.extend(_gltf_vertex(vertex) for vertex in vertices)
+        normals.extend((face_normals[face_name],) * 4)
         texcoords.extend(_uv_coordinates(_UV[part.name][face_name]))
         indices.extend((start, start + 1, start + 2, start, start + 2, start + 3))
-    return positions, texcoords, indices
+    return positions, normals, texcoords, indices
 
 
 def _gltf_vertex(vertex: tuple[float, float, float]) -> tuple[float, float, float]:
@@ -197,8 +216,8 @@ def _gltf_vertex(vertex: tuple[float, float, float]) -> tuple[float, float, floa
 
 def _uv_coordinates(rectangle: tuple[int, int, int, int]) -> tuple[tuple[float, float], ...]:
     x0, y0, x1, y1 = rectangle
-    u0, u1 = x0 / 64, x1 / 64
-    v0, v1 = 1 - y0 / 64, 1 - y1 / 64
+    u0, u1 = (x0 + 0.5) / 64, (x1 - 0.5) / 64
+    v0, v1 = 1 - (y0 + 0.5) / 64, 1 - (y1 - 0.5) / 64
     return (u0, v1), (u1, v1), (u1, v0), (u0, v0)
 
 
