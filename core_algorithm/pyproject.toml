@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lalo-core-experiment"
+version = "0.0.0"
+description = "Isolated workspace for validating Lalo's deterministic geometry kernel."
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
